@@ -24,7 +24,7 @@ void setServo(int servo, int angle, int pwm) {
   if (angle < 0) angle = 0;
 
   int dutyCycleUS = map(angle, 0, 180, USMIN, USMAX);
-  int dutyCycle = map(angle, 0, 180, pos0, pos180);
+  //int dutyCycle = map(angle, 0, 180, pos0, pos180);
 
   if(pwm == 1){
     pwm1.writeMicroseconds(servo, dutyCycleUS);
@@ -38,6 +38,12 @@ void setServo(int servo, int angle, int pwm) {
     pwm2.setPWM(servo, 0, dutyCycle);
   }
   */
+}
+
+void moveLeg(){
+  
+
+
 }
 
 void setup() {
