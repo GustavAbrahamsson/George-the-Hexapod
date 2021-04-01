@@ -6,36 +6,25 @@
 Adafruit_PWMServoDriver pwm1 = Adafruit_PWMServoDriver(0x40);
 Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 
-const int SERVO_0 = 0;
-const int SERVO_1 = 0;
-const int SERVO_2 = 0;
-const int SERVO_3 = 0;
-const int SERVO_4 = 0;
-const int SERVO_5 = 0;
-const int SERVO_6 = 0;
-const int SERVO_7 = 0;
-const int SERVO_8 = 0;
-const int SERVO_9 = 0;
-const int SERVO_10 = 0;
-const int SERVO_11 = 0;
-const int SERVO_12 = 0;
-const int SERVO_13 = 0;
-const int SERVO_14 = 0;
-const int SERVO_15 = 0;
-const int SERVO_16 = 0;
-const int SERVO_17 = 0;
-
 const int SERVOS_1[] = {0,1,2,3,4,5,6,7};
 const int SERVOS_2[] = {0,1,2,3,4,5,6,7};
 
-//int pos0 = 102;
-//int pos180 = 512;
+int pos0 = 200; // 102
+int pos180 = 300; // 512
 
-const int USMIN = 500;
-const int USMAX = 2500;
+const int USMIN = 580;
+const int USMAX = 2450;
+
+const int angleOffset = 5;
  
 void setServo(int servo, int angle, int pwm) {
+  angle += angleOffset;
+
+  if (angle > 180) angle = 180;
+  if (angle < 0) angle = 0;
+
   int dutyCycleUS = map(angle, 0, 180, USMIN, USMAX);
+  int dutyCycle = map(angle, 0, 180, pos0, pos180);
 
   if(pwm == 1){
     pwm1.writeMicroseconds(servo, dutyCycleUS);
@@ -57,16 +46,42 @@ void setup() {
  
   pwm1.begin();
   pwm1.setPWMFreq(50);  // This is the maximum PWM frequency
+
   /*
   pwm2.begin();
   pwm2.setPWMFreq(50);  // This is the maximum PWM frequency
   */
 
+  //pwm1.writeMicroseconds(0, 1500);
+
   setServo(0,90,1);
+
+  delay(1000);
 
 }
 
 
 void loop() {
+
+/*
+  for(int i = -90; i < 90; i++){
+    setServo(0,90 + i, 1);
+    delay(50);
+  }
+  delay(1000);
+
+  for(int i = 90; i > -90; i--){
+    setServo(0,90 + i, 1);
+    delay(50);
+  }
+
+  delay(3000);
+*/
+  delay(3000);
+  setServo(0,90,1);
+  delay(3000);
+  setServo(0,180,1);
+  delay(3000);
+  setServo(0,0,1);
   
 }
