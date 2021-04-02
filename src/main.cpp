@@ -6,6 +6,17 @@
 Adafruit_PWMServoDriver pwm1 = Adafruit_PWMServoDriver(0x40);
 Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 
+// PCA9685
+#define SCL A5
+#define SDA A4
+
+// NRF24L01
+#define CE 7
+#define CSN 8
+#define MOSI 11
+#define MISO 12
+#define SCK 13
+
 const int SERVOS_1[] = {0,1,2,3,4,5,6,7};
 const int SERVOS_2[] = {0,1,2,3,4,5,6,7};
 
