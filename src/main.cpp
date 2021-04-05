@@ -73,6 +73,9 @@ void setup() {
 
   delay(10);
 
+  setServo(14,90,1);
+  setServo(12,180,1);
+
   /*
   pwm2.begin();
   pwm2.setPWMFreq(50);  // This is the maximum PWM frequency
@@ -98,11 +101,12 @@ void loop() {
   }
 */
 
+
   delay(3000);
-  setServo(0,0,1);
+  setServo(15,0,1);
   delay(3000);
-  setServo(0,90,1);
+  setServo(15,90,1);
   delay(3000);
-  setServo(0,180,1);
+  setServo(15,180,1);
   
 }
