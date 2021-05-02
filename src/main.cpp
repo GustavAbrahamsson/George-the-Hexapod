@@ -2,6 +2,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
  
 Adafruit_PWMServoDriver pwm1 = Adafruit_PWMServoDriver(0x40);
 Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
@@ -30,6 +33,25 @@ const int ANGLE_OFFSET = 5;
 
 const uint8_t MIN_ANGLE = 10;
 const uint8_t MAX_ANGLE = 170;
+
+RF24 radio(7, 8); // CE, CSN
+
+const byte address[6] = "35075";
+
+void setupNRF() {
+  Serial.begin(9600);
+  radio.begin();
+  radio.openReadingPipe(0, address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.startListening();
+}
+void receiveData() {
+  if (radio.available()) {
+    char text[32] = "";
+    radio.read(&text, sizeof(text));
+    Serial.println(text);
+  }
+}
  
 void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
   //angle += ANGLE_OFFSET;
@@ -52,8 +74,6 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
   }else if(pwm == 2){
     pwm2.setPWM(servo, 0, dutyCycle);
   }
-  
-  
 }
 
 void moveLeg(){
@@ -63,8 +83,10 @@ void moveLeg(){
 }
 
 void setup() {
+  setupNRF();
+
   Serial.begin(9600);
-  Serial.println("16 channel PWM test!");
+  Serial.println("HPR-1 started");
  
   pwm1.begin();
   pwm1.setPWMFreq(50);  // This is the maximum PWM frequency
@@ -88,6 +110,10 @@ void setup() {
 
 void loop() {
 
+delay(1000);
+
+ receiveData();
+
 /*
   for(int i = -90; i < 90; i++){
     setServo(0,90 + i, 1);
@@ -101,12 +127,12 @@ void loop() {
   }
 */
 
-
+/*
   delay(3000);
   setServo(15,0,1);
   delay(3000);
   setServo(15,90,1);
   delay(3000);
   setServo(15,180,1);
-  
+  */
 }
