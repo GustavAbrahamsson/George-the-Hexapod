@@ -63,7 +63,7 @@ String receiveData() {
     char text[64] = "";
     radio.read(&text, sizeof(text));
     Serial.println("Radio available!");
-    //Serial.println(text);
+    Serial.println(text);
     return text;
   }
   Serial.println("Failed! Program aborted!");
@@ -98,8 +98,8 @@ void fillVariable(int16_t *receiver, char *donator, int index0, int index1, bool
     output += (donator[i]-'0') * j;
     j /= 10;
   }
-  Serial.println(donator[index0]);
-  if(isSigned && (donator[index0] == '1')) output = -output;
+  Serial.println(donator[index0 - 1]);
+  if(isSigned && (donator[index0 - 1] == '1')) output = -output;
   *receiver = output;
 }
 /*
