@@ -58,20 +58,28 @@ void setupNRF() {
   radio.setPALevel(RF24_PA_MIN);
   radio.startListening();
 }
-void receiveData() {
+String receiveData() {
   if (radio.available()) {
-    char text[32] = "";
+    char text[64] = "";
     radio.read(&text, sizeof(text));
-    Serial.println(text);
+    Serial.println("Radio available!");
+    //Serial.println(text);
+    return text;
   }
+  Serial.println("Failed! Program aborted!");
+  while(0); // Stay here
+  return "0";
 }
 
 void fillVariable(uint16_t *receiver, char *donator, int index0, int index1, bool isSigned){
-  char output = 0;
-  index0 += isSigned; // Skip sign bit if there is one
-  char j = 10 ^ (index1 - index0); // Start at 1000 if it's 5831 etc
+  uint16_t output = 0;
+  if(isSigned) index0 += 1; // Skip sign bit if there is one
+  uint16_t j = 1;
+  for(int i = 0; i < (index1 - index0); i++){ // Start at 1000 if it's 5831 etc
+    j *= 10;
+  }
   for(int i = index0; i <= index1; i++){
-    output += donator[i] * j;
+    output += (donator[i]-'0') * j;
     j /= 10;
   }
   if(isSigned) output = -output;
@@ -80,14 +88,18 @@ void fillVariable(uint16_t *receiver, char *donator, int index0, int index1, boo
 
 // Second one for signed int16_t
 void fillVariable(int16_t *receiver, char *donator, int index0, int index1, bool isSigned){
-  char output = 0;
-  index0 += isSigned; // Skip sign bit if there is one
-  char j = 10 ^ (index1 - index0); // Start at 1000 if it's 5831 etc
+  int16_t output = 0;
+  if(isSigned) index0 += 1; // Skip sign bit if there is one
+  uint16_t j = 1;
+  for(int i = 0; i < (index1 - index0); i++){ // Start at 1000 if it's 5831 etc
+    j *= 10;
+  }
   for(int i = index0; i <= index1; i++){
-    output += donator[i] * j;
+    output += (donator[i]-'0') * j;
     j /= 10;
   }
-  if(isSigned) output = -output;
+  Serial.println(donator[index0]);
+  if(isSigned && (donator[index0] == '1')) output = -output;
   *receiver = output;
 }
 /*
@@ -95,22 +107,32 @@ void pickBit(bool *receiver, char *donator, int index){ // Useless lol
   *receiver = donator[index];
 }
 */
-String decodeMessage(String data){
+void decodeMessage(String data){
   char dataArray[24];
   strcpy(dataArray, data.c_str());
+
+  /*
   for(unsigned int i = 0; i < strlen(dataArray); i++){
     Serial.print(dataArray[i]);
   }
+  */
 
   fillVariable(&js1_x,    dataArray,  0,  3,  0);
   fillVariable(&js1_y,    dataArray,  4,  7,  0);
-  js1_sw = dataArray[8];
+
+  if      (dataArray[8] == '1')   js1_sw = 1;
+  else if (dataArray[8] == '0')   js1_sw = 0;
+
   fillVariable(&js2_x,    dataArray,  9,  12, 0);
   fillVariable(&js2_y,    dataArray,  13, 16, 0);
-  fillVariable(&re_value, dataArray,  14, 19, 1);
 
+  if      (dataArray[17] == '1')   tgl_sw = 1;
+  else if (dataArray[17] == '0')   tgl_sw = 0;
 
-  return "Hej";
+  fillVariable(&re_value, dataArray,  18, 22, 1);
+
+  if      (dataArray[23] == '1')   re_sw = 1;
+  else if (dataArray[23] == '0')   re_sw = 0;
 }
  
 void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
@@ -155,8 +177,10 @@ void setup() {
 
   delay(10);
 
+  /*
   setServo(14,90,1);
   setServo(12,180,1);
+*/
 
   /*
   pwm2.begin();
@@ -165,28 +189,46 @@ void setup() {
 
   //pwm1.writeMicroseconds(0, 1500);
 
-  String message = "102310231102310231100411";
-
-  Serial.println(decodeMessage(message));
+  //String message = "102310221102110201100411";
+  /*
+  char dataArray[24];
+  strcpy(dataArray, message.c_str());
+  for(unsigned int i = 0; i < strlen(dataArray); i++){
+    Serial.print(dataArray[i]);
+  }
+  
+  fillVariable(&js1_x,    dataArray,  0,  3,  0);
+ */
 
 }
 
 
 void loop() {
 
- delay(100);
+  delay(250);
 
- receiveData();
+  String data = receiveData();
 
- 
-  Serial.print(js1_x); Serial.print("  |  ");
-  Serial.print(js1_y); Serial.print("  |  ");
+  //Serial.println("receiveData():");
+  //Serial.println(data);
 
+  decodeMessage(data);
 
+  Serial.print("js1_x = "); Serial.print(js1_x); Serial.print(" | ");
+  Serial.print("js1_y = "); Serial.print(js1_y); Serial.print(" | ");
+  Serial.print("js1_sw = "); Serial.print(js1_sw); Serial.println(" | ");
   
-  Serial.print(js2_x); Serial.print("  |  ");
-  Serial.print(js2_y); Serial.print("  |  ");
+  Serial.print("js2_x = "); Serial.print(js2_x); Serial.print(" | ");
+  Serial.print("js2_y = "); Serial.print(js2_y); Serial.println(" | ");
+  
+  Serial.print("tgl_sw = "); Serial.print(tgl_sw); Serial.println(" | ");
+
+  Serial.print("re_value = "); Serial.print(re_value); Serial.print(" | ");
+  Serial.print("re_sw = "); Serial.print(re_sw); Serial.println(" | ");
+
+
   Serial.print("\n\n\n");
+  
 
 /*
   for(int i = -90; i < 90; i++){
