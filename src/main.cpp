@@ -20,11 +20,24 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define MISO 12
 #define SCK 13
 
+// Input data from transmitter
+uint16_t js1_x = 500;
+uint16_t js1_y = 500;
+bool js1_sw = 0;
+
+uint16_t js2_x = 500;
+uint16_t js2_y = 500;
+
+bool tgl_sw = 0;
+
+int16_t re_value = 0;
+bool re_sw = 0;
+
 const int SERVOS_1[] = {0,1,2,3,4,5,6,7};
 const int SERVOS_2[] = {0,1,2,3,4,5,6,7};
 
 int pos0 = 102; // 102    SG90: 107, 525
-int pos180 = 475; // 512
+int pos180 = 475; // 475  (old: 512)
 
 const int USMIN = 500; // 580
 const int USMAX = 2500; // 2450
@@ -51,6 +64,26 @@ void receiveData() {
     radio.read(&text, sizeof(text));
     Serial.println(text);
   }
+}
+
+
+
+void fillVariable(uint16_t* receiver, uint8_t receiverDigits, uint16_t* donator, uint8_t receiverDigits){
+  for(int i = 0; i < receiverDigits; i++){
+    
+  }
+}
+
+String decodeMessage(String data){
+  char dataArray[24];
+  strcpy(dataArray, data.c_str());
+  for(int i = 0; i < strlen(dataArray); i++){
+    Serial.print(dataArray[i]);
+  }
+  Serial.println();
+  Serial.println();
+  
+  return "Hej";
 }
  
 void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
@@ -104,6 +137,10 @@ void setup() {
   */
 
   //pwm1.writeMicroseconds(0, 1500);
+
+  String message = "102310231102310231100411";
+
+  Serial.println(decodeMessage(message));
 
 }
 
