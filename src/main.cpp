@@ -66,23 +66,50 @@ void receiveData() {
   }
 }
 
-
-
-void fillVariable(uint16_t* receiver, uint8_t receiverDigits, uint16_t* donator, uint8_t receiverDigits){
-  for(int i = 0; i < receiverDigits; i++){
-    
+void fillVariable(uint16_t *receiver, char *donator, int index0, int index1, bool isSigned){
+  char output = 0;
+  index0 += isSigned; // Skip sign bit if there is one
+  char j = 10 ^ (index1 - index0); // Start at 1000 if it's 5831 etc
+  for(int i = index0; i <= index1; i++){
+    output += donator[i] * j;
+    j /= 10;
   }
+  if(isSigned) output = -output;
+  *receiver = output;
 }
 
+// Second one for signed int16_t
+void fillVariable(int16_t *receiver, char *donator, int index0, int index1, bool isSigned){
+  char output = 0;
+  index0 += isSigned; // Skip sign bit if there is one
+  char j = 10 ^ (index1 - index0); // Start at 1000 if it's 5831 etc
+  for(int i = index0; i <= index1; i++){
+    output += donator[i] * j;
+    j /= 10;
+  }
+  if(isSigned) output = -output;
+  *receiver = output;
+}
+/*
+void pickBit(bool *receiver, char *donator, int index){ // Useless lol
+  *receiver = donator[index];
+}
+*/
 String decodeMessage(String data){
   char dataArray[24];
   strcpy(dataArray, data.c_str());
-  for(int i = 0; i < strlen(dataArray); i++){
+  for(unsigned int i = 0; i < strlen(dataArray); i++){
     Serial.print(dataArray[i]);
   }
-  Serial.println();
-  Serial.println();
-  
+
+  fillVariable(&js1_x,    dataArray,  0,  3,  0);
+  fillVariable(&js1_y,    dataArray,  4,  7,  0);
+  js1_sw = dataArray[8];
+  fillVariable(&js2_x,    dataArray,  9,  12, 0);
+  fillVariable(&js2_y,    dataArray,  13, 16, 0);
+  fillVariable(&re_value, dataArray,  14, 19, 1);
+
+
   return "Hej";
 }
  
@@ -92,7 +119,7 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
   if (angle > 180) angle = 180;
   if (angle < 0) angle = 0;
 
-  uint16_t dutyCycleUS = map(angle, 0, 180, USMIN, USMAX);
+  //uint16_t dutyCycleUS = map(angle, 0, 180, USMIN, USMAX);
   uint16_t dutyCycle = map(angle, 0, 180, pos0, pos180);
   
   /*
@@ -150,6 +177,16 @@ void loop() {
  delay(100);
 
  receiveData();
+
+ 
+  Serial.print(js1_x); Serial.print("  |  ");
+  Serial.print(js1_y); Serial.print("  |  ");
+
+
+  
+  Serial.print(js2_x); Serial.print("  |  ");
+  Serial.print(js2_y); Serial.print("  |  ");
+  Serial.print("\n\n\n");
 
 /*
   for(int i = -90; i < 90; i++){
