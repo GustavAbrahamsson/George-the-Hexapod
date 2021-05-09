@@ -1,0 +1,64 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
+{
+    "configurations": [
+        {
+            "name": "PlatformIO",
+            "includePath": [
+                "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/include",
+                "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/src",
+                "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/.pio/libdeps/nanoatmega328/RF24",
+                "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/.pio/libdeps/nanoatmega328/RF24/utility",
+                "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/.pio/libdeps/nanoatmega328/Adafruit PWM Servo Driver Library",
+                "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                "C:/Users/gusta/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "C:/Users/gusta/.platformio/packages/framework-arduino-avr/variants/eightanaloginputs",
+                "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "C:/Users/gusta/.platformio/packages/tool-unity",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/include",
+                    "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/src",
+                    "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/.pio/libdeps/nanoatmega328/RF24",
+                    "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/.pio/libdeps/nanoatmega328/RF24/utility",
+                    "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "c:/Users/gusta/OneDrive - Chalmers University of Technology/Chalmers/Övrigt/CASE/HPR-1/Code/HPR-1 Code/HPR-1/.pio/libdeps/nanoatmega328/Adafruit PWM Servo Driver Library",
+                    "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    "C:/Users/gusta/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "C:/Users/gusta/.platformio/packages/framework-arduino-avr/variants/eightanaloginputs",
+                    "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "C:/Users/gusta/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "C:/Users/gusta/.platformio/packages/tool-unity",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=50101",
+                "ARDUINO_AVR_NANO",
+                "F_CPU=16000000L",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO=10808",
+                "__AVR_ATmega328P__",
+                ""
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "compilerPath": "C:/Users/gusta/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
+            "compilerArgs": [
+                "-mmcu=atmega328p",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
