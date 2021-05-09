@@ -20,6 +20,50 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define MISO 12
 #define SCK 13
 
+
+// Servos (Dxy: Leg at side D (L/R) x servo number y with y = 1 for coxa, 2 for femur and 3 for tibia)
+
+// In counter clockwise direction from front left leg:
+
+
+// Left side: SERVO_DRIVER_1
+
+// Leg 1: Front left
+#define S11 0 // Leg 1: Servo 1
+#define S12 1 // Leg 1: Servo 2
+#define S13 2 // Leg 1: Servo 3
+
+// Leg 2: Middle left
+#define S21 3 // Leg 2: Servo 1
+#define S22 4 // Leg 2: Servo 2
+#define L23 5 // Leg 2: Servo 3
+
+// Leg 3: Back left
+#define S31 6 // Leg 3: Servo 1
+#define S32 7 // Leg 3: Servo 2
+#define S33 8 // Leg 3: Servo 3
+
+
+
+
+// Right side: SERVO_DRIVER_2
+
+// Leg 4: Back right
+#define S41 7 // Leg 4: Servo 1
+#define S42 8 // Leg 4: Servo 2
+#define S43 9 // Leg 4: Servo 3
+
+// Leg 5: Middle right
+#define S51 10 // Leg 5: Servo 1
+#define S52 11 // Leg 5: Servo 2
+#define S53 12 // Leg 5: Servo 3
+
+// Leg 6: Front right
+#define S61 13 // Leg 6: Servo 1
+#define S62 14 // Leg 6: Servo 2
+#define S63 15 // Leg 6: Servo 3
+
+
 // Input data from transmitter
 uint16_t js1_x = 500;
 uint16_t js1_y = 500;
@@ -33,8 +77,8 @@ bool tgl_sw = 0;
 int16_t re_value = 0;
 bool re_sw = 0;
 
-const int SERVOS_1[] = {0,1,2,3,4,5,6,7};
-const int SERVOS_2[] = {0,1,2,3,4,5,6,7};
+//const int SERVOS_1[] = {0,1,2,3,4,5,6,7};
+//const int SERVOS_2[] = {0,1,2,3,4,5,6,7};
 
 int pos0 = 102; // 102    SG90: 107, 525
 int pos180 = 475; // 475  (old: 512)
