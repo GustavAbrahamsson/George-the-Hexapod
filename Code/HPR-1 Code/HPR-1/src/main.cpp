@@ -95,6 +95,9 @@ RF24 radio(7, 8); // CE, CSN
 
 const byte address[6] = "35075";
 
+double jsAngle1 = 0;
+double jsAngle2 = 0;
+
 void setupNRF() {
   Serial.begin(9600);
   radio.begin();
@@ -202,10 +205,13 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
   }
 }
 
+void calculateDirections(){
+  jsAngle1 = atan(js1_x / js1_y);
+  if(js1_y < 0) jsAngle1 = -1.57 + jsAngle1;
+}
+
 void moveLeg(){
   
-
-
 }
 
 void setup() {
@@ -258,17 +264,19 @@ void loop() {
 
   decodeMessage(data);
 
-  Serial.print("js1_x = "); Serial.print(js1_x); Serial.print(" | ");
-  Serial.print("js1_y = "); Serial.print(js1_y); Serial.print(" | ");
-  Serial.print("js1_sw = "); Serial.print(js1_sw); Serial.println(" | ");
-  
-  Serial.print("js2_x = "); Serial.print(js2_x); Serial.print(" | ");
-  Serial.print("js2_y = "); Serial.print(js2_y); Serial.println(" | ");
-  
-  Serial.print("tgl_sw = "); Serial.print(tgl_sw); Serial.println(" | ");
+  calculateDirections();
 
-  Serial.print("re_value = "); Serial.print(re_value); Serial.print(" | ");
-  Serial.print("re_sw = "); Serial.print(re_sw); Serial.println(" | ");
+  Serial.print("js1_x = ");     Serial.print(js1_x);    Serial.print(" | ");
+  Serial.print("js1_y = ");     Serial.print(js1_y);    Serial.print(" | ");
+  Serial.print("js1_sw = ");    Serial.print(js1_sw);   Serial.println(" | ");
+  
+  Serial.print("js2_x = ");     Serial.print(js2_x);    Serial.print(" | ");
+  Serial.print("js2_y = ");     Serial.print(js2_y);    Serial.println(" | ");
+  
+  Serial.print("tgl_sw = ");    Serial.print(tgl_sw);   Serial.println(" | ");
+
+  Serial.print("re_value = ");  Serial.print(re_value); Serial.print(" | ");
+  Serial.print("re_sw = ");     Serial.print(re_sw);    Serial.println(" | ");
 
 
   Serial.print("\n\n\n");
