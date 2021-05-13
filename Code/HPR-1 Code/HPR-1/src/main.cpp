@@ -64,18 +64,21 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S63 15 // Leg 6: Servo 3
 
 // Hexapod dimensions:
-unsigned const char COXA = 47; // mm
-unsigned const char L1 = 95; // mm
-unsigned const char L2 = 140; // mm
+const double COXA = 47; // mm
+const double L1 = 95; // mm
+const double L2 = 140; // mm
 
 // Inverse kinematics:
-int A_1 = 0;
-int A_2 = 0;
-int B_1 = 0;
-int B_2 = 0;
-int v0 = 0;
-int v1 = 0;
-int v2 = 0;
+double A_1 = 0;
+double A_2 = 0;
+double B_1 = 0;
+double B_2 = 0;
+double v0 = 0;
+double v1 = 0;
+double v2 = 0;
+
+const double DEG_TO_RADIANS = 3.1415/180;
+const double RADIANS_TO_DEG = 180/3.1415;
 
 // Input data from transmitter
 uint16_t js1_x = 500;
@@ -122,11 +125,11 @@ String receiveData() {
   if (radio.available()) {
     char text[64] = "";
     radio.read(&text, sizeof(text));
-    Serial.println("Radio available!");
+    //Serial.println("Radio available!");
     Serial.println(text);
     return text;
   }
-  Serial.println("Failed! Program aborted!");
+  //Serial.println("Failed! Program aborted!");
   while(0); // Stay here
   return "0";
 }
@@ -227,18 +230,33 @@ void calculateDirections(){
   if(js1_y < 0) jsAngle1 = -1.57 + jsAngle1;
 }
 
-void moveLeg(char x, char y, char z){
-  char L=sqrt(x^2 + y^2);
-  char HF = sqrt((L - COXA)^2 + z^2);
+void calcInverseKinematics(int x, int y, int z){ // All coordinates in mm
+  double L = sqrt(square(x) + square(y));
+  double HF = sqrt((square(L - COXA)) + (z^2));
   A_1 = atan((L - COXA)/-z);
     
-  A_2 = acos((L2^2-L1^2-HF^2)/(-2*L1*HF));
-  B_1 = acos((HF^2-L1^2-L2^2)/(-2*L1*L2));
+  A_2 = acos((square(L2) - square(L1) - square(HF)) / (-2 * L1 * HF));
+  B_1 = acos((square(HF) - square(L1) - square(L2)) / (-2 * L1 * L2));
     
-  v1 = -(3.14/2- A_1 - A_2);
+  v1 = -(3.14 / 2 - A_1 - A_2)*RAD_TO_DEG + 90;
   B_2= 3.14 - v1 - B_1;
-  v2 = 3.14/2 - B_1;
-  v0 = atan2(y,x);
+  v2 = (3.14 / 2 - B_1)*RAD_TO_DEG;
+  v0 = abs(atan2(y,x));
+
+  
+  Serial.println(L);
+  Serial.println(HF);
+  Serial.println(A_1);
+  Serial.println(A_2);
+  Serial.println(B_1);
+  Serial.println(B_2);
+  Serial.println(v0);
+  Serial.println(v1);
+  Serial.println(v2);
+  Serial.println();
+  Serial.println(abs(v0 * RAD_TO_DEG));
+  Serial.println(v1 * RAD_TO_DEG + 90);
+  Serial.println(v2*RAD_TO_DEG);
 }
 
 void setup() {
@@ -258,12 +276,8 @@ void setup() {
 
   pwm2.setOscillatorFrequency(27000000);
 
-
-
-
   delay(10);
-
-  
+  /*
   setServo(S12,180,1);
   setServo(S22,180,1);
   setServo(S32,180,1);
@@ -288,8 +302,22 @@ void setup() {
   setServo(S41,100,2);
   setServo(S51,100,2);
   setServo(S61,100,2);
+*/
+
+  delay(1000);
+
+  
+  int x_in = 50;
+  int y_in = -150;
+  int z_in = -60;
+
+  calcInverseKinematics(x_in, y_in, z_in);
 
 
+  //setServo(S51,v0,2); NOT SAFE
+
+  //setServo(S52,v1,2);
+  //setServo(S53,v2,2);
   /*
   setServo(S13,90,1);
   setServo(S23,90,1);
@@ -337,7 +365,7 @@ void loop() {
   decodeMessage(data);
 
   calculateDirections();
-
+/*
   Serial.print("js1_x = ");     Serial.print(js1_x);    Serial.print(" | ");
   Serial.print("js1_y = ");     Serial.print(js1_y);    Serial.print(" | ");
   Serial.print("js1_sw = ");    Serial.print(js1_sw);   Serial.println(" | ");
@@ -353,7 +381,7 @@ void loop() {
 
   Serial.print("\n\n\n");
   
-
+*/
 /*
   for(int i = -90; i < 90; i++){
     setServo(0,90 + i, 1);
