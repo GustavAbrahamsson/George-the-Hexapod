@@ -36,7 +36,7 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 // Leg 2: Middle left
 #define S21 3 // Leg 2: Servo 1
 #define S22 4 // Leg 2: Servo 2
-#define L23 5 // Leg 2: Servo 3
+#define S23 5 // Leg 2: Servo 3
 
 // Leg 3: Back left
 #define S31 6 // Leg 3: Servo 1
@@ -63,6 +63,19 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S62 14 // Leg 6: Servo 2
 #define S63 15 // Leg 6: Servo 3
 
+// Hexapod dimensions:
+unsigned const char COXA = 47; // mm
+unsigned const char L1 = 95; // mm
+unsigned const char L2 = 140; // mm
+
+// Inverse kinematics:
+int A_1 = 0;
+int A_2 = 0;
+int B_1 = 0;
+int B_2 = 0;
+int v0 = 0;
+int v1 = 0;
+int v2 = 0;
 
 // Input data from transmitter
 uint16_t js1_x = 500;
@@ -185,6 +198,10 @@ void decodeMessage(String data){
 void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
   //angle += ANGLE_OFFSET;
 
+  if(pwm == 2){
+    angle = 180 - angle;
+  }
+
   if (angle > 180) angle = 180;
   if (angle < 0) angle = 0;
 
@@ -210,8 +227,18 @@ void calculateDirections(){
   if(js1_y < 0) jsAngle1 = -1.57 + jsAngle1;
 }
 
-void moveLeg(){
-  
+void moveLeg(char x, char y, char z){
+  char L=sqrt(x^2 + y^2);
+  char HF = sqrt((L - COXA)^2 + z^2);
+  A_1 = atan((L - COXA)/-z);
+    
+  A_2 = acos((L2^2-L1^2-HF^2)/(-2*L1*HF));
+  B_1 = acos((HF^2-L1^2-L2^2)/(-2*L1*L2));
+    
+  v1 = -(3.14/2- A_1 - A_2);
+  B_2= 3.14 - v1 - B_1;
+  v2 = 3.14/2 - B_1;
+  v0 = atan2(y,x);
 }
 
 void setup() {
@@ -225,12 +252,57 @@ void setup() {
 
   pwm1.setOscillatorFrequency(27000000);
 
+
+  pwm2.begin();
+  pwm2.setPWMFreq(50);  // This is the maximum PWM frequency
+
+  pwm2.setOscillatorFrequency(27000000);
+
+
+
+
   delay(10);
 
+  
+  setServo(S12,180,1);
+  setServo(S22,180,1);
+  setServo(S32,180,1);
+
+  setServo(S42,180,2);
+  setServo(S52,180,2);
+  setServo(S62,180,2);
+
+  
+  setServo(S13,0,1);
+  setServo(S23,0,1);
+  setServo(S33,0,1);
+
+  setServo(S43,0,2);
+  setServo(S53,0,2);
+  setServo(S63,0,2);
+
+  setServo(S11,100,1);
+  setServo(S21,100,1);
+  setServo(S31,100,1);
+
+  setServo(S41,100,2);
+  setServo(S51,100,2);
+  setServo(S61,100,2);
+
+
   /*
-  setServo(14,90,1);
-  setServo(12,180,1);
-*/
+  setServo(S13,90,1);
+  setServo(S23,90,1);
+  setServo(S33,90,1);
+  */
+
+  /*
+  setServo(S43,90,2);
+  setServo(S53,90,2);
+  setServo(S63,90,2);
+  */
+
+  //setServo(12,180,1);
 
   /*
   pwm2.begin();
