@@ -8,9 +8,9 @@ axis equal
 
 %vf=pi/2;
 
-x_in=0.050;
+x_in=0.040;
 y_in=-0.060;
-z_in=-0.150;
+z_in=0.150;
 
 x=x_in;
 y=y_in;
@@ -33,7 +33,7 @@ takeStep=1;
 
 k=1;
 
-for i=1:1
+for i=1:50
     
     if(n > 1 && takeStep)
         k=k+1;
@@ -90,6 +90,8 @@ for i=1:1
     v2=pi/2-B1;
     v0=atan2(z,x);
 
+    v0 =  v0 - pi/4;
+    
     P_0=[0,0,0];
 
     x0=cos(v0)*coxa;
@@ -125,9 +127,9 @@ for i=1:1
 
     view(3)
     
-    xlim([-0.1 0.1])
-    ylim([-0.2 0.1])
-    zlim([-0.2 0.1])
+    xlim([-0.2 0.2])
+    ylim([-0.2 0.2])
+    zlim([-0.2 0.2])
     
 end
 

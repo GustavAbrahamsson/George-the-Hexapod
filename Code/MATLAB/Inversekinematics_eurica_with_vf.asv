@@ -8,9 +8,9 @@ axis equal
 
 %vf=pi/2;
 
-x_in=0.05;
-y_in=-0.06;
-z_in=-0.09;
+x_in=0.040;
+y_in=-0.060;
+z_in=0.150;
 
 x=x_in;
 y=y_in;
@@ -33,7 +33,7 @@ takeStep=1;
 
 k=1;
 
-for i=1:n
+for i=1:50
     
     if(n > 1 && takeStep)
         k=k+1;
@@ -57,12 +57,12 @@ for i=1:n
     end
     
     clf
-    L1=0.47;
-    L2=0.095;
+    L1=0.095;
+    L2=0.140;
     
     plot3(x,z,y,'or')
 
-    coxa=0.02;
+    coxa=0.047;
     
 %     x_p=z*cos(vf);
 %     z_p=z*sin(vf);
@@ -90,6 +90,8 @@ for i=1:n
     v2=pi/2-B1;
     v0=atan2(z,x);
 
+    v0 =  v0 + pi/4;
+    
     P_0=[0,0,0];
 
     x0=cos(v0)*coxa;
@@ -125,9 +127,9 @@ for i=1:n
 
     view(3)
     
-    xlim([-0.1 0.1])
-    ylim([-0.2 0.1])
-    zlim([-0.2 0.1])
+    xlim([-0.2 0.2])
+    ylim([-0.2 0.2])
+    zlim([-0.2 0.2])
     
 end
 
@@ -147,4 +149,6 @@ subspace(P2',P')*180/pi
 subspace(P2',P')*180/pi
 
 legend({"A1 ="+A1*180/pi,"A2 ="+A2*180/pi,"B1 ="+B1*180/pi,"B2 ="+B2*180/pi,"v1 ="+v1*180/pi,"v2 ="+v2*180/pi},'Location','southeast')
-
+v0*180/3.14
+v1*180/3.14
+v2*180/3.14

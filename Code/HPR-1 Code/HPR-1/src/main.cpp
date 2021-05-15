@@ -68,17 +68,18 @@ const double COXA = 47; // mm
 const double L1 = 95; // mm
 const double L2 = 140; // mm
 
+const double LEG_OFFSET_ANGLE = 0.785; // pi/4
+
 // Inverse kinematics:
 double A_1 = 0;
 double A_2 = 0;
 double B_1 = 0;
 double B_2 = 0;
-double v0 = 0;
-double v1 = 0;
-double v2 = 0;
+uint8_t v0 = 0; // S_1 angle
+uint8_t v1 = 0; // S_2 angle
+uint8_t v2 = 0; // S_3 angle
 
-const double DEG_TO_RADIANS = 3.1415/180;
-const double RADIANS_TO_DEG = 180/3.1415;
+uint8_t currentLeg;
 
 // Input data from transmitter
 uint16_t js1_x = 500;
@@ -102,7 +103,8 @@ int pos180 = 475; // 475  (old: 512)
 const int USMIN = 500; // 580
 const int USMAX = 2500; // 2450
 
-const int ANGLE_OFFSET = 5;
+const int8_t ANGLE_OFFSET = 5; // degrees
+const int8_t ANGLE_OFFSET_FEMUR = 14; // degrees
 
 const uint8_t MIN_ANGLE = 10;
 const uint8_t MAX_ANGLE = 170;
@@ -201,6 +203,10 @@ void decodeMessage(String data){
 void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
   //angle += ANGLE_OFFSET;
 
+  if(servo == S13 || servo == S23 || servo == S33 || servo == S43 || servo == S53 || servo == S63){ // If femur servo
+    angle -= ANGLE_OFFSET_FEMUR; // Adjust for femur construction
+  }
+
   if(pwm == 2){
     angle = 180 - angle;
   }
@@ -232,31 +238,32 @@ void calculateDirections(){
 
 void calcInverseKinematics(int x, int y, int z){ // All coordinates in mm
   double L = sqrt(square(x) + square(y));
-  double HF = sqrt((square(L - COXA)) + (z^2));
+  double HF = sqrt((square(L - COXA)) + square(z));
   A_1 = atan((L - COXA)/-z);
-    
+  
   A_2 = acos((square(L2) - square(L1) - square(HF)) / (-2 * L1 * HF));
   B_1 = acos((square(HF) - square(L1) - square(L2)) / (-2 * L1 * L2));
-    
-  v1 = -(3.14 / 2 - A_1 - A_2)*RAD_TO_DEG + 90;
-  B_2= 3.14 - v1 - B_1;
-  v2 = (3.14 / 2 - B_1)*RAD_TO_DEG;
-  v0 = abs(atan2(y,x));
-
   
+  v1 = 90 -(1.57 - A_1 - A_2) * RAD_TO_DEG;
+  B_2 = 3.14 - v1 - B_1;
+  v2 = 90 - (1.57 - B_1) * RAD_TO_DEG ;
+  v0 = 180 - atan2(y,x) * RAD_TO_DEG;
+
   Serial.println(L);
   Serial.println(HF);
   Serial.println(A_1);
   Serial.println(A_2);
   Serial.println(B_1);
   Serial.println(B_2);
+
+  Serial.println();
+
   Serial.println(v0);
   Serial.println(v1);
   Serial.println(v2);
+
   Serial.println();
-  Serial.println(abs(v0 * RAD_TO_DEG));
-  Serial.println(v1 * RAD_TO_DEG + 90);
-  Serial.println(v2*RAD_TO_DEG);
+  Serial.println();
 }
 
 void setup() {
@@ -272,11 +279,12 @@ void setup() {
 
 
   pwm2.begin();
-  pwm2.setPWMFreq(50);  // This is the maximum PWM frequency
+  pwm2.setPWMFreq(50);
 
   pwm2.setOscillatorFrequency(27000000);
 
   delay(10);
+
   /*
   setServo(S12,180,1);
   setServo(S22,180,1);
@@ -286,7 +294,6 @@ void setup() {
   setServo(S52,180,2);
   setServo(S62,180,2);
 
-  
   setServo(S13,0,1);
   setServo(S23,0,1);
   setServo(S33,0,1);
@@ -303,13 +310,18 @@ void setup() {
   setServo(S51,100,2);
   setServo(S61,100,2);
 */
-
-  delay(1000);
-
   
-  int x_in = 50;
-  int y_in = -150;
+  int x_in = 40;
+  int y_in = 150;
   int z_in = -60;
+
+  currentLeg = 1;
+
+  calcInverseKinematics(x_in, y_in, z_in);
+
+  x_in = 0;
+  y_in = 150;
+  z_in = -60;
 
   calcInverseKinematics(x_in, y_in, z_in);
 
@@ -357,14 +369,14 @@ void loop() {
 
   delay(250);
 
-  String data = receiveData();
+  //String data = receiveData();
 
   //Serial.println("receiveData():");
   //Serial.println(data);
 
-  decodeMessage(data);
+  //decodeMessage(data);
 
-  calculateDirections();
+  //calculateDirections();
 /*
   Serial.print("js1_x = ");     Serial.print(js1_x);    Serial.print(" | ");
   Serial.print("js1_y = ");     Serial.print(js1_y);    Serial.print(" | ");
