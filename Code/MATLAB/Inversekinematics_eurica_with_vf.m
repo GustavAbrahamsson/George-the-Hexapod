@@ -8,9 +8,9 @@ axis equal
 
 %vf=pi/2;
 
-x_in=0.040;
-y_in=-0.060;
-z_in=0.150;
+x_in=0.140;
+y_in=-0.090;
+z_in=0.140;
 
 x=x_in;
 y=y_in;
