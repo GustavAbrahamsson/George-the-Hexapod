@@ -44,8 +44,6 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S33 8 // Leg 3: Servo 3
 
 
-
-
 // Right side: SERVO_DRIVER_2
 
 // Leg 4: Back right
@@ -63,12 +61,23 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S62 14 // Leg 6: Servo 2
 #define S63 15 // Leg 6: Servo 3
 
+
+
 // Hexapod dimensions:
 const double COXA = 47; // mm
 const double L1 = 95; // mm
 const double L2 = 140; // mm
 
 const double LEG_OFFSET_ANGLE = 0.785; // pi/4
+
+const int HOME_X[6] = {  140,   0,  -140,  -140,    0,    140 };  //coxa-to-toe home positions
+const int HOME_Y[6] = {  140,   198,  140,  -140,   -198,  -140 };
+const int HOME_Z[6] = {  -90,  -90,  -90,   -90,   -90,   -90 };
+
+const int BODY_X[6] = {  120,   0,    -120,  -120,    0,  120 }; //body center-to-coxa servo distances 
+const int BODY_Y[6] = {  50,    90,     50,   -50,  -90, -50  };
+const int BODY_Z[6] = {   0,    0,       0,     0,    0,   0  };
+
 
 // Inverse kinematics:
 double A_1 = 0;

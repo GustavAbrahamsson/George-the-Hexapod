@@ -33,7 +33,7 @@ takeStep=1;
 
 k=1;
 
-for i=1:50
+for i=1:1
     
     if(n > 1 && takeStep)
         k=k+1;
