@@ -84,6 +84,7 @@ double A_1 = 0;
 double A_2 = 0;
 double B_1 = 0;
 double B_2 = 0;
+
 uint8_t v0 = 0; // S_1 angle
 uint8_t v1 = 0; // S_2 angle
 uint8_t v2 = 0; // S_3 angle
