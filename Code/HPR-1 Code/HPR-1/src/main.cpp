@@ -61,22 +61,22 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S62 14 // Leg 6: Servo 2
 #define S63 15 // Leg 6: Servo 3
 
-
+// General:
+bool runProgram = 1;
 
 // Hexapod dimensions:
 const double COXA = 47; // mm
 const double L1 = 95; // mm
 const double L2 = 140; // mm
 
-const double LEG_OFFSET_ANGLE = 0.785; // pi/4
 
-const int HOME_X[6] = {  140,   0,  -140,  -140,    0,    140 };  //coxa-to-toe home positions
-const int HOME_Y[6] = {  140,   198,  140,  -140,   -198,  -140 };
-const int HOME_Z[6] = {  -90,  -90,  -90,   -90,   -90,   -90 };
+const int HOME_X[7] = {  0, 140,   0,  -140,  -140,    0,    140 };  //coxa-to-toe home positions (leg 1: index 1 ... leg 6: index 6)
+const int HOME_Y[7] = {  0, 140,   198,  140,  -140,   -198,  -140 };
+const int HOME_Z[7] = {  0, -90,  -90,  -90,   -90,   -90,   -90 };
 
-const int BODY_X[6] = {  120,   0,    -120,  -120,    0,  120 }; //body center-to-coxa servo distances 
-const int BODY_Y[6] = {  50,    90,     50,   -50,  -90, -50  };
-const int BODY_Z[6] = {   0,    0,       0,     0,    0,   0  };
+const int BODY_X[7] = {  0, 120,   0,    -120,  -120,    0,  120 }; //body center-to-coxa servo distances 
+const int BODY_Y[7] = {  0, 50,    90,     50,   -50,  -90, -50  };
+const int BODY_Z[7] = {  0, 0,    0,       0,     0,    0,   0  };
 
 
 // Inverse kinematics:
@@ -85,27 +85,29 @@ double A_2 = 0;
 double B_1 = 0;
 double B_2 = 0;
 
-uint8_t v0 = 0; // S_1 angle
-uint8_t v1 = 0; // S_2 angle
-uint8_t v2 = 0; // S_3 angle
+int16_t v0 = 0; // S_1 angle
+int16_t v1 = 0; // S_2 angle
+int16_t v2 = 0; // S_3 angle
+
+uint8_t servoAngles[3];
 
 uint8_t currentLeg;
 
+const double LEG_OFFSET_ANGLES[7] = {0, -0.785, -1.57, -2.36, -3.93, -4.71, -5.495}; // Radians
+
 // Input data from transmitter
-uint16_t js1_x = 500;
-uint16_t js1_y = 500;
+int16_t js1_x = 500;
+int16_t js1_y = 500;
+
 bool js1_sw = 0;
 
-uint16_t js2_x = 500;
-uint16_t js2_y = 500;
+int16_t js2_x = 500;
+int16_t js2_y = 500;
 
 bool tgl_sw = 0;
 
 int16_t re_value = 0;
 bool re_sw = 0;
-
-//const int SERVOS_1[] = {0,1,2,3,4,5,6,7};
-//const int SERVOS_2[] = {0,1,2,3,4,5,6,7};
 
 int pos0 = 102; // 102    SG90: 107, 525
 int pos180 = 475; // 475  (old: 512)
@@ -125,6 +127,21 @@ const byte address[6] = "35075";
 
 double jsAngle1 = 0;
 double jsAngle2 = 0;
+
+float jsSpeed1 = 0;
+float jsSpeed2 = 0;
+
+// Gait
+const uint8_t CYCLIC_TIME = 50; // ms
+
+void abortProgram(String error){
+  Serial.print("ERROR: ");
+  Serial.println(error);
+  Serial.println();
+  Serial.println("PROGRAM ABORTED. HPR-1 FROZEN.");
+  runProgram = 0;
+  while(1);
+}
 
 void setupNRF() {
   Serial.begin(9600);
@@ -177,20 +194,10 @@ void fillVariable(int16_t *receiver, char *donator, int index0, int index1, bool
   if(isSigned && (donator[index0 - 1] == '1')) output = -output;
   *receiver = output;
 }
-/*
-void pickBit(bool *receiver, char *donator, int index){ // Useless lol
-  *receiver = donator[index];
-}
-*/
+
 void decodeMessage(String data){
   char dataArray[24];
   strcpy(dataArray, data.c_str());
-
-  /*
-  for(unsigned int i = 0; i < strlen(dataArray); i++){
-    Serial.print(dataArray[i]);
-  }
-  */
 
   fillVariable(&js1_x,    dataArray,  0,  3,  0);
   fillVariable(&js1_y,    dataArray,  4,  7,  0);
@@ -211,7 +218,6 @@ void decodeMessage(String data){
 }
  
 void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
-  //angle += ANGLE_OFFSET;
 
   if(servo == S13 || servo == S23 || servo == S33 || servo == S43 || servo == S53 || servo == S63){ // If femur servo
     angle -= ANGLE_OFFSET_FEMUR; // Adjust for femur construction
@@ -241,24 +247,52 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
   }
 }
 
-void calculateDirections(){
-  jsAngle1 = atan(js1_x / js1_y);
-  if(js1_y < 0) jsAngle1 = -1.57 + jsAngle1;
+void calculateDirection1(){ // Joystick 1
+  js1_x -= 512;
+  js1_y -= 512;
+  jsAngle1 = atan2(js1_x,js1_y) * 180/3.14;
+  jsSpeed1 = sqrtf(square(js1_x) + square(js1_y)) / 512;
+  if(jsSpeed1 > 1.0f) jsSpeed1 = 1.0f;
 }
 
-void calcInverseKinematics(int x, int y, int z){ // All coordinates in mm
+void calculateDirection2(){ // Joystick 2
+  js2_x -= 512;
+  js2_y -= 512;
+  jsAngle2 = atan2(js2_x,js2_y) * 180/3.14;
+  jsSpeed2 = sqrtf(square(js2_y) + square(js2_y)) / 512;
+  if(jsSpeed2 > 1.0f) jsSpeed2 = 1.0f;
+}
+
+void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates in mm. Returns a pointer to a vector with v0, v1 and v2
+  
+  double theta = LEG_OFFSET_ANGLES[leg];
+
+  int x_temp = x;
+
+  x = cos(theta) * x      - sin(theta) * y; // Rotation matrix
+  y = sin(theta) * x_temp + cos(theta) * y;
+  
   double L = sqrt(square(x) + square(y));
   double HF = sqrt((square(L - COXA)) + square(z));
-  A_1 = atan((L - COXA)/-z);
+  A_1 = atan((L - COXA) / -z);
   
   A_2 = acos((square(L2) - square(L1) - square(HF)) / (-2 * L1 * HF));
   B_1 = acos((square(HF) - square(L1) - square(L2)) / (-2 * L1 * L2));
   
   v1 = 90 -(1.57 - A_1 - A_2) * RAD_TO_DEG;
-  B_2 = 3.14 - v1 - B_1;
+  //B_2 = 3.14 - v1 - B_1; Needed?
   v2 = 90 - (1.57 - B_1) * RAD_TO_DEG ;
-  v0 = 180 - atan2(y,x) * RAD_TO_DEG;
+  v0 = 90 - atan2(y,x) * RAD_TO_DEG;
 
+  if(v0 < 0 || 180 < v0) abortProgram("IK calculated invalid value for v0");
+  if(v1 < 0 || 180 < v1) abortProgram("IK calculated invalid value for v1");
+  if(v2 < 0 || 180 < v2) abortProgram("IK calculated invalid value for v2");
+
+  servoAngles[0] = v0;
+  servoAngles[1] = v1;
+  servoAngles[2] = v2;
+
+/*
   Serial.println(L);
   Serial.println(HF);
   Serial.println(A_1);
@@ -274,6 +308,7 @@ void calcInverseKinematics(int x, int y, int z){ // All coordinates in mm
 
   Serial.println();
   Serial.println();
+  */
 }
 
 void setup() {
@@ -319,22 +354,50 @@ void setup() {
   setServo(S41,100,2);
   setServo(S51,100,2);
   setServo(S61,100,2);
-*/
+
   
   int x_in = 40;
   int y_in = 150;
   int z_in = -60;
 
-  currentLeg = 1;
+  for(int i = 1; i < 7; i++){
+    Serial.println(LEG_OFFSET_ANGLES[i] * RAD_TO_DEG);
 
-  calcInverseKinematics(x_in, y_in, z_in);
+  }
+  
+*/
+  int x_in = HOME_X[1];
+  int y_in = HOME_Y[1];
+  int z_in = HOME_Z[1];
 
+  for(int i = 1; i < 7; i++){
+    Serial.println(i);
+    Serial.println();
+    x_in = HOME_X[i] + 30;
+    y_in = HOME_Y[i];
+    z_in = HOME_Z[i];
+
+    calcInverseKinematics(i, x_in, y_in, z_in);
+
+    Serial.println(servoAngles[0]);
+    Serial.println(servoAngles[1]);
+    Serial.println(servoAngles[2]);
+    Serial.println();
+    Serial.println();
+    Serial.println();
+  }
+
+
+
+
+
+/*
   x_in = 0;
   y_in = 150;
   z_in = -60;
 
-  calcInverseKinematics(x_in, y_in, z_in);
-
+  calcInverseKinematics(currentLeg, x_in, y_in, z_in);
+*/
 
   //setServo(S51,v0,2); NOT SAFE
 
