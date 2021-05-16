@@ -62,6 +62,8 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S63 15 // Leg 6: Servo 3
 
 // General:
+unsigned long currentTime = 0;
+unsigned long previousTime = 0;
 bool runProgram = 1;
 
 // Hexapod dimensions:
@@ -133,6 +135,7 @@ float jsSpeed2 = 0;
 
 // Gait
 const uint8_t CYCLIC_TIME = 50; // ms
+const uint8_t LEG_CYCLIC_TIME = 50; // ms
 
 void abortProgram(String error){
   Serial.print("ERROR: ");
@@ -223,7 +226,7 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
     angle -= ANGLE_OFFSET_FEMUR; // Adjust for femur construction
   }
 
-  if(pwm == 2){
+  if(pwm == 2 && ((servo != S41) || (servo != S51) || (servo != S61))){
     angle = 180 - angle;
   }
 
@@ -440,7 +443,13 @@ void setup() {
 
 void loop() {
 
-  delay(250);
+  currentTime = millis();
+
+  if(currentTime - previousTime > CYCLIC_TIME){
+    previousTime = currentTime;
+
+
+  }
 
   //String data = receiveData();
 
