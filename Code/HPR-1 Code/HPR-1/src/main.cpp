@@ -61,6 +61,12 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S62 14 // Leg 6: Servo 2
 #define S63 15 // Leg 6: Servo 3
 
+
+// Angle offsets for all servos:
+int PWM1_SERVO_ANGLE_OFFSETS[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+int PWM2_SERVO_ANGLE_OFFSETS[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+
 // General:
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
@@ -146,6 +152,18 @@ void abortProgram(String error){
   while(1);
 }
 
+void setupServoAngleOffsets(){
+
+  PWM1_SERVO_ANGLE_OFFSETS[S12] = 7; 
+  PWM1_SERVO_ANGLE_OFFSETS[S22] = 7; 
+  PWM1_SERVO_ANGLE_OFFSETS[S32] = 7;
+
+  
+  PWM2_SERVO_ANGLE_OFFSETS[S42] = 7; 
+  PWM2_SERVO_ANGLE_OFFSETS[S52] = 2; 
+  PWM2_SERVO_ANGLE_OFFSETS[S52] = 4; 
+}
+
 void setupNRF() {
   Serial.begin(9600);
   radio.begin();
@@ -223,7 +241,7 @@ void decodeMessage(String data){
 void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
 
   if(servo == S13 || servo == S23 || servo == S33 || servo == S43 || servo == S53 || servo == S63){ // If femur servo
-    angle -= ANGLE_OFFSET_FEMUR; // Adjust for femur construction
+    if(angle >= ANGLE_OFFSET_FEMUR) angle -= ANGLE_OFFSET_FEMUR; // Adjust for femur construction
   }
 
   if(pwm == 2 && ((servo != S41) || (servo != S51) || (servo != S61))){
@@ -232,6 +250,11 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
 
   if (angle > 180) angle = 180;
   if (angle < 0) angle = 0;
+
+  
+  if(pwm == 1){
+    angle += PWM1_SERVO_ANGLE_OFFSETS[servo];
+  }
 
   //uint16_t dutyCycleUS = map(angle, 0, 180, USMIN, USMAX);
   uint16_t dutyCycle = map(angle, 0, 180, pos0, pos180);
@@ -247,6 +270,43 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
     pwm1.setPWM(servo, 0, dutyCycle);
   }else if(pwm == 2){
     pwm2.setPWM(servo, 0, dutyCycle);
+  }
+}
+
+void setLeg(int leg){
+  if(leg < 1 || leg > 6){
+    abortProgram("INVALID LEG TO 'setLeg(int leg, int angle0, int angle1, int angle2)'");
+  }
+  int pwmL;
+  int index = 0;
+  if(leg <= 3){
+    pwmL = 1;
+    for (int i = 0; i < 3; i++){
+      index = 3*(leg-1) + i;
+      setServo(index, servoAngles[i], pwmL);
+    }
+  }
+  else if(leg >= 4) {
+    pwmL = 2;
+    for (int i = 0; i < 3; i++){
+      index = 7 + 3*(leg-4) + i;
+      //if(i == 2) servoAngles[i] = 180 - servoAngles[i];
+      setServo(index, servoAngles[i], pwmL);
+    }
+  }
+}
+
+void hexaAngleSetAllLegs(int angle0, int angle1, int angle2){
+  servoAngles[0] = angle0;
+  servoAngles[1] = angle1;
+  servoAngles[2] = angle2;
+  for (int i = 1; i < 7; i++){
+    setLeg(i);
+    Serial.println(i);
+    Serial.println();
+    Serial.println(servoAngles[0]);
+    Serial.println(servoAngles[1]);
+    Serial.println(servoAngles[2]);
   }
 }
 
@@ -314,8 +374,33 @@ void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates
   */
 }
 
+void hexaMoveLegXYZ(int leg, int x, int y, int z){
+  int x_in = HOME_X[leg];
+  int y_in = HOME_Y[leg];
+  int z_in = HOME_Z[leg];
+
+  x_in = HOME_X[leg] + x;
+  y_in = HOME_Y[leg] + y;
+  z_in = HOME_Z[leg] + z;
+
+  if(z_in > 0) abortProgram("POSITIVE Z VALUE TARGETET");
+  
+  calcInverseKinematics(leg, x_in, y_in, z_in);
+  
+  Serial.println(servoAngles[0]);
+  Serial.println(servoAngles[1]);
+  Serial.println(servoAngles[2]);
+  
+  setLeg(leg);
+}
+
+void hexaCrouch(){
+  hexaAngleSetAllLegs(90,170,0);
+}
+
 void setup() {
   setupNRF();
+  setupServoAngleOffsets();
 
   Serial.begin(9600);
   Serial.println("HPR-1 started");
@@ -325,13 +410,17 @@ void setup() {
 
   pwm1.setOscillatorFrequency(27000000);
 
-
   pwm2.begin();
   pwm2.setPWMFreq(50);
 
   pwm2.setOscillatorFrequency(27000000);
 
   delay(10);
+
+  hexaCrouch();
+
+  //hexaMoveLegXYZ(2,30,0,0);
+
 
   /*
   setServo(S12,180,1);
@@ -369,10 +458,9 @@ void setup() {
   }
   
 */
-  int x_in = HOME_X[1];
-  int y_in = HOME_Y[1];
-  int z_in = HOME_Z[1];
 
+
+/*
   for(int i = 1; i < 7; i++){
     Serial.println(i);
     Serial.println();
@@ -385,11 +473,17 @@ void setup() {
     Serial.println(servoAngles[0]);
     Serial.println(servoAngles[1]);
     Serial.println(servoAngles[2]);
+
+    Serial.println();
+    Serial.println();
+
+    setLeg(i);
+
     Serial.println();
     Serial.println();
     Serial.println();
   }
-
+*/
 
 
 
