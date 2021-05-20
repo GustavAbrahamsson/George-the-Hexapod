@@ -592,14 +592,28 @@ void loop() {
 
   currentTime = millis();
 
+  //calculateDirections();
+
+
   if(currentTime - previousTime > CYCLIC_TIME){
     previousTime = currentTime;
+
+    String data = receiveData();
+
+    //Serial.println("receiveData():");
+    //Serial.println(data);
+
+    decodeMessage(data);
+
+    Serial.println(js1_sw);
+    Serial.println(re_sw);
 
     if(js1_sw && re_sw){
       timer0 += CYCLIC_TIME;
       if(timer0 > 1000){
         hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
         runProgram = !runProgram;
+        timer0 = 0;
       }
     }
     else{
@@ -607,19 +621,11 @@ void loop() {
     }
 
     if(runProgram){ // Main program
-
+      hexaMoveAllLegsXYZ(0,0,0);
     }
 
   }
 
-  //String data = receiveData();
-
-  //Serial.println("receiveData():");
-  //Serial.println(data);
-
-  //decodeMessage(data);
-
-  //calculateDirections();
 /*
   Serial.print("js1_x = ");     Serial.print(js1_x);    Serial.print(" | ");
   Serial.print("js1_y = ");     Serial.print(js1_y);    Serial.print(" | ");
