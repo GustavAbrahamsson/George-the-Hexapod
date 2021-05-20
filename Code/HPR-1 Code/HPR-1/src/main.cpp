@@ -82,9 +82,14 @@ const double L1 = 95; // mm
 const double L2 = 140; // mm
 
 const int Z_HOME_VALUE = -50;
-
+/*
 const int HOME_X[7] = {  0, 140,   0,  -140,  -140,    0,    140 };  //coxa-to-toe home positions (leg 1: index 1 ... leg 6: index 6)
 const int HOME_Y[7] = {  0, 140,   198,  140,  -140,   -198,  -140 };
+const int HOME_Z[7] = {  0, Z_HOME_VALUE,  Z_HOME_VALUE,  Z_HOME_VALUE,   Z_HOME_VALUE,   Z_HOME_VALUE,   Z_HOME_VALUE };
+*/
+
+const int HOME_X[7] = {  0, 110,   0,  -110,  -110,    0,    110 };  //coxa-to-toe home positions (leg 1: index 1 ... leg 6: index 6)
+const int HOME_Y[7] = {  0, 110,   156,  110,  -110,   -156,  -110 };
 const int HOME_Z[7] = {  0, Z_HOME_VALUE,  Z_HOME_VALUE,  Z_HOME_VALUE,   Z_HOME_VALUE,   Z_HOME_VALUE,   Z_HOME_VALUE };
 
 const int BODY_X[7] = {  0, 120,   0,    -120,  -120,    0,  120 }; //body center-to-coxa servo distances 
@@ -94,6 +99,15 @@ const int BODY_Z[7] = {  0, 0,    0,       0,     0,    0,   0  };
 int current_x[7] = {  0, 0, 0, 0, 0, 0, 0 };
 int current_y[7] = {  0, 0, 0, 0, 0, 0, 0 };
 int current_z[7] = {  0, 0, 0, 0, 0, 0, 0 };
+
+int target_x[7] = {  0, 0, 0, 0, 0, 0, 0 };
+int target_y[7] = {  0, 0, 0, 0, 0, 0, 0 };
+int target_z[7] = {  0, 0, 0, 0, 0, 0, 0 };
+
+bool arc_leg[7] = {  0, 0, 0, 0, 0, 0, 0 };
+
+int8_t velocity[7] = {  0, 0, 0, 0, 0, 0, 0 };
+
 
 // Inverse kinematics:
 double A_1 = 0;
@@ -148,7 +162,7 @@ float jsSpeed1 = 0;
 float jsSpeed2 = 0;
 
 // Gait
-const uint8_t CYCLIC_TIME = 50; // ms
+const uint8_t CYCLIC_TIME = 100; // ms
 const uint8_t LEG_CYCLIC_TIME = 50; // ms
 
 void abortProgram(String error){
@@ -430,6 +444,25 @@ void hexaCrouch(){
   hexaAngleSetAllLegs(90,170,0);
 }
 
+void setLegTargetXYZ(int leg, int x, int y, int z, bool arc){
+  target_x[leg] = x;
+  target_y[leg] = y;
+  target_z[leg] = z;
+
+  arc_leg[leg] = arc;
+}
+
+void updateLegs(){
+  int Dx;
+  int Dy;
+  int Dz;
+  for (int i = 1; i < 7; i++){
+    Dx = target_x[i] - current_x[i];
+    Dy = target_y[i] - current_y[i];
+    Dz = target_z[i] - current_z[i];
+  }
+}
+
 void setup() {
   setupNRF();
   setupServoAngleOffsets();
@@ -452,6 +485,12 @@ void setup() {
   delay(2000);
 
   hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+
+  delay(2000);
+
+  hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+
+  setLegTargetXYZ(1,0,0,0);
 
 /*
   for (int i = 0; i < 3; i++){
@@ -594,7 +633,6 @@ void loop() {
 
   //calculateDirections();
 
-
   if(currentTime - previousTime > CYCLIC_TIME){
     previousTime = currentTime;
 
@@ -619,6 +657,8 @@ void loop() {
     else{
       timer0 = 0;
     }
+
+    updateLegs();
 
     if(runProgram){ // Main program
       hexaMoveAllLegsXYZ(0,0,0);
