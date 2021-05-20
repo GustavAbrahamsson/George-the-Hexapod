@@ -71,21 +71,29 @@ int PWM2_SERVO_ANGLE_OFFSETS[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
 bool runProgram = 1;
+unsigned long timer0 = 0;
+unsigned long timer1 = 0;
+unsigned long timer2 = 0;
+unsigned long timer3 = 0;
 
 // Hexapod dimensions:
 const double COXA = 47; // mm
 const double L1 = 95; // mm
 const double L2 = 140; // mm
 
+const int Z_HOME_VALUE = -50;
 
 const int HOME_X[7] = {  0, 140,   0,  -140,  -140,    0,    140 };  //coxa-to-toe home positions (leg 1: index 1 ... leg 6: index 6)
 const int HOME_Y[7] = {  0, 140,   198,  140,  -140,   -198,  -140 };
-const int HOME_Z[7] = {  0, -90,  -90,  -90,   -90,   -90,   -90 };
+const int HOME_Z[7] = {  0, Z_HOME_VALUE,  Z_HOME_VALUE,  Z_HOME_VALUE,   Z_HOME_VALUE,   Z_HOME_VALUE,   Z_HOME_VALUE };
 
 const int BODY_X[7] = {  0, 120,   0,    -120,  -120,    0,  120 }; //body center-to-coxa servo distances 
 const int BODY_Y[7] = {  0, 50,    90,     50,   -50,  -90, -50  };
 const int BODY_Z[7] = {  0, 0,    0,       0,     0,    0,   0  };
 
+int current_x[7] = {  0, 0, 0, 0, 0, 0, 0 };
+int current_y[7] = {  0, 0, 0, 0, 0, 0, 0 };
+int current_z[7] = {  0, 0, 0, 0, 0, 0, 0 };
 
 // Inverse kinematics:
 double A_1 = 0;
@@ -154,14 +162,22 @@ void abortProgram(String error){
 
 void setupServoAngleOffsets(){
 
-  PWM1_SERVO_ANGLE_OFFSETS[S12] = 7; 
+  PWM1_SERVO_ANGLE_OFFSETS[S12] = 4; 
   PWM1_SERVO_ANGLE_OFFSETS[S22] = 7; 
   PWM1_SERVO_ANGLE_OFFSETS[S32] = 7;
 
+  PWM1_SERVO_ANGLE_OFFSETS[S13] = 2; 
+  PWM1_SERVO_ANGLE_OFFSETS[S23] = 0; 
+  PWM1_SERVO_ANGLE_OFFSETS[S33] = -2;
+
   
-  PWM2_SERVO_ANGLE_OFFSETS[S42] = 7; 
-  PWM2_SERVO_ANGLE_OFFSETS[S52] = 2; 
-  PWM2_SERVO_ANGLE_OFFSETS[S52] = 4; 
+  PWM2_SERVO_ANGLE_OFFSETS[S42] = 10; 
+  PWM2_SERVO_ANGLE_OFFSETS[S52] = -5; 
+  PWM2_SERVO_ANGLE_OFFSETS[S62] = 4; 
+
+  PWM2_SERVO_ANGLE_OFFSETS[S43] = -3; 
+  PWM2_SERVO_ANGLE_OFFSETS[S53] = -2; 
+  PWM2_SERVO_ANGLE_OFFSETS[S63] = -2; 
 }
 
 void setupNRF() {
@@ -238,7 +254,7 @@ void decodeMessage(String data){
   else if (dataArray[23] == '0')   re_sw = 0;
 }
  
-void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
+void setServo(int16_t servo, int16_t angle, uint8_t pwm) {
 
   if(servo == S13 || servo == S23 || servo == S33 || servo == S43 || servo == S53 || servo == S63){ // If femur servo
     if(angle >= ANGLE_OFFSET_FEMUR) angle -= ANGLE_OFFSET_FEMUR; // Adjust for femur construction
@@ -248,13 +264,15 @@ void setServo(uint8_t servo, uint8_t angle, uint8_t pwm) {
     angle = 180 - angle;
   }
 
-  if (angle > 180) angle = 180;
-  if (angle < 0) angle = 0;
-
-  
   if(pwm == 1){
     angle += PWM1_SERVO_ANGLE_OFFSETS[servo];
   }
+  if(pwm == 2){
+    angle -= PWM2_SERVO_ANGLE_OFFSETS[servo];
+  }
+
+  if (angle > 180) angle = 180;
+  if (angle < 0) angle = 0;
 
   //uint16_t dutyCycleUS = map(angle, 0, 180, USMIN, USMAX);
   uint16_t dutyCycle = map(angle, 0, 180, pos0, pos180);
@@ -337,6 +355,11 @@ void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates
   
   double L = sqrt(square(x) + square(y));
   double HF = sqrt((square(L - COXA)) + square(z));
+
+  if (!(HF < (L2+L1)) && (HF > (L2-L1))){
+    abortProgram("IMPOSSIBLE TO REACH COORDINATES");
+  }
+
   A_1 = atan((L - COXA) / -z);
   
   A_2 = acos((square(L2) - square(L1) - square(HF)) / (-2 * L1 * HF));
@@ -392,6 +415,15 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
   Serial.println(servoAngles[2]);
   
   setLeg(leg);
+  current_x[leg] = x_in;
+  current_y[leg] = y_in;
+  current_z[leg] = z_in;
+}
+
+void hexaMoveAllLegsXYZ(int x, int y, int z){
+  for(int i = 1; i < 7; i++){
+    hexaMoveLegXYZ(i,x,y,z);
+  }
 }
 
 void hexaCrouch(){
@@ -417,9 +449,30 @@ void setup() {
 
   delay(10);
 
-  hexaCrouch();
+  delay(2000);
 
-  //hexaMoveLegXYZ(2,30,0,0);
+  hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+
+/*
+  for (int i = 0; i < 3; i++){
+    for(int i = 0; i < 25; i++){
+      delay(20);
+      hexaMoveAllLegsXYZ(0,0,2*i);
+    }
+    delay(100);
+    for(int i = 25; i > -50; i--){
+      delay(20);
+      hexaMoveAllLegsXYZ(0,0,2*i);
+    }
+    delay(100);
+    for(int i = -50; i < 0; i++){
+      delay(20);
+      hexaMoveAllLegsXYZ(0,0,2*i);
+    }
+
+  }
+  
+ */
 
 
   /*
@@ -542,6 +595,20 @@ void loop() {
   if(currentTime - previousTime > CYCLIC_TIME){
     previousTime = currentTime;
 
+    if(js1_sw && re_sw){
+      timer0 += CYCLIC_TIME;
+      if(timer0 > 1000){
+        hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+        runProgram = !runProgram;
+      }
+    }
+    else{
+      timer0 = 0;
+    }
+
+    if(runProgram){ // Main program
+
+    }
 
   }
 
