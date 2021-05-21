@@ -1,3 +1,8 @@
+/*
+My first ever hexapod. Markwtech's hexapod really helped, since I pretty much copied the idea with bearings
+in the servo holders and most of the tripodGait().
+*/
+
 
 #include <Arduino.h>
 #include <Wire.h>
@@ -76,6 +81,8 @@ unsigned long timer1 = 0;
 unsigned long timer2 = 0;
 unsigned long timer3 = 0;
 
+//float M_PI = 3.1415;
+
 // Hexapod dimensions:
 const double COXA = 47; // mm
 const double L1 = 95; // mm
@@ -100,6 +107,10 @@ int current_x[7] = {  0, 0, 0, 0, 0, 0, 0 };
 int current_y[7] = {  0, 0, 0, 0, 0, 0, 0 };
 int current_z[7] = {  0, 0, 0, 0, 0, 0, 0 };
 
+int offset_x[7] = {  0, 0, 0, 0, 0, 0, 0 };
+int offset_y[7] = {  0, 0, 0, 0, 0, 0, 0 };
+int offset_z[7] = {  0, 0, 0, 0, 0, 0, 0 };
+
 int target_x[7] = {  0, 0, 0, 0, 0, 0, 0 };
 int target_y[7] = {  0, 0, 0, 0, 0, 0, 0 };
 int target_z[7] = {  0, 0, 0, 0, 0, 0, 0 };
@@ -107,6 +118,8 @@ int target_z[7] = {  0, 0, 0, 0, 0, 0, 0 };
 bool arc_leg[7] = {  0, 0, 0, 0, 0, 0, 0 };
 
 int8_t velocity[7] = {  0, 0, 0, 0, 0, 0, 0 };
+
+bool updateLeg[7] = {  0, 0, 0, 0, 0, 0, 0 };
 
 
 // Inverse kinematics:
@@ -164,6 +177,27 @@ float jsSpeed2 = 0;
 // Gait
 const uint8_t CYCLIC_TIME = 100; // ms
 const uint8_t LEG_CYCLIC_TIME = 50; // ms
+
+float strideX = 0;
+float strideY = 0;
+float strideR = 0;
+
+int gait_speed = 0;
+int numTicks;
+int tick = 0;
+int duration = 0;
+
+int totalX, totalY, totalZ;
+
+float sinRotX, sinRotY, sinRotZ;
+float cosRotX, cosRotY, cosRotZ;
+float rotOffsetX, rotOffsetY, rotOffsetZ;
+float amplitudeX, amplitudeY, amplitudeZ;
+float step_height_multiplier;
+
+uint8_t tripod_case[7] = {0,0,1,0,1,0,1};
+
+
 
 void abortProgram(String error){
   Serial.print("ERROR: ");
@@ -444,22 +478,137 @@ void hexaCrouch(){
   hexaAngleSetAllLegs(90,170,0);
 }
 
-void setLegTargetXYZ(int leg, int x, int y, int z, bool arc){
+void setLegTargetXYZ(int leg, int x, int y, int z, int v, bool arc){
   target_x[leg] = x;
   target_y[leg] = y;
   target_z[leg] = z;
 
+  velocity[leg] = v;
+
   arc_leg[leg] = arc;
+
+  updateLeg[leg] = 1;
 }
 
 void updateLegs(){
   int Dx;
   int Dy;
   int Dz;
+
+  int DP;
+
+  int x_c;
+  int y_c;
+  int z_c;
+  
+  int x_new;
+  int y_new;
+  int z_new;
+
   for (int i = 1; i < 7; i++){
-    Dx = target_x[i] - current_x[i];
-    Dy = target_y[i] - current_y[i];
-    Dz = target_z[i] - current_z[i];
+    if (updateLeg[i]){
+      x_c = current_x[i];
+      y_c = current_y[i];
+      z_c = current_z[i];
+      /*
+      if (x_c == target_x[i] && y_c == target_y[i] && z_c == target_z[i]){
+        return;
+      }
+      */
+      Dx = target_x[i] - x_c;
+      Dy = target_y[i] - y_c;
+      Dz = target_z[i] - z_c;
+
+      int v = velocity[i];
+
+      DP = sqrt(square(Dx) + square(Dy) + square(Dz));
+
+      if (v >= DP) {
+        v = DP;
+        updateLeg[i] = 0;
+      }
+
+      x_new = x_c + Dx * v / DP;
+      y_new = y_c + Dy * v / DP;
+      z_new = z_c + Dz * v / DP;
+
+      hexaMoveLegXYZ(i, x_new, y_new, z_new);
+
+    }
+  }
+}
+
+void calculateStrides()
+{
+  //compute stride lengths
+  strideX = 90*js1_x/1023;
+  strideY = 90*js1_y/1023;
+  strideR = 35*js2_x/1023;
+
+  //compute rotation trig
+  sinRotZ = sin(radians(strideR));
+  cosRotZ = cos(radians(strideR));
+
+  //set duration for normal and slow speed modes
+  if(gait_speed == 0) duration = 1080; 
+  else duration = 3240;
+}
+
+void calculateAmplitudes(int leg)
+{
+  //compute total distance from center of body to toe
+  totalX = HOME_X[leg] + BODY_X[leg];
+  totalY = HOME_Y[leg] + BODY_Y[leg];
+
+  //compute rotational offset
+  rotOffsetX = totalY*sinRotZ + totalX*cosRotZ - totalX;
+  rotOffsetY = totalY*cosRotZ - totalX*sinRotZ - totalY;
+
+  //compute X and Y amplitude and constrain to prevent legs from crashing into each other
+  amplitudeX = ((strideX + rotOffsetX) / 2.0);
+  amplitudeY = ((strideY + rotOffsetY) / 2.0);
+  amplitudeX = constrain(amplitudeX,-50,50);
+  amplitudeY = constrain(amplitudeY,-50,50);
+
+  //compute Z amplitude
+  if(abs(strideX + rotOffsetX) > abs(strideY + rotOffsetY))
+    amplitudeZ = step_height_multiplier * (strideX + rotOffsetX) / 4.0;
+  else
+    amplitudeZ = step_height_multiplier * (strideY + rotOffsetY) / 4.0;
+}
+
+void tripodGait(){
+
+  if(jsSpeed1 > 0.05 || jsSpeed2 > 0.05){
+    numTicks = round(duration / CYCLIC_TIME / 2.0);
+    calculateStrides();
+    for(int i = 1; i < 7; i++){
+      calculateAmplitudes(i);
+      switch (tripod_case[i]){
+      case 0:
+        current_x[i] = HOME_X[i] - amplitudeX*cos(M_PI*tick/numTicks);
+        current_y[i] = HOME_Y[i] - amplitudeY*cos(M_PI*tick/numTicks);
+        current_z[i] = HOME_Z[i] + abs(amplitudeZ)*sin(M_PI*tick/numTicks);
+        if(tick >= numTicks-1) tripod_case[i] = 2;
+        break;
+      
+      case 1:
+        current_x[i] = HOME_X[i] + amplitudeX*cos(M_PI*tick/numTicks);
+        current_y[i] = HOME_Y[i] + amplitudeY*cos(M_PI*tick/numTicks);
+        current_z[i] = HOME_Z[i];
+        if(tick >= numTicks-1) tripod_case[i] = 1;
+        break;
+      }
+    }
+  }
+
+
+  
+}
+
+void writeAllLegs(){
+  for(int i = 1; i < 7; i++){
+    hexaMoveLegXYZ(i, current_x[i], current_y[i], current_z[i]);
   }
 }
 
@@ -490,7 +639,7 @@ void setup() {
 
   hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
 
-  setLegTargetXYZ(1,0,0,0);
+  setLegTargetXYZ(1,0,0,0,5,0);
 
 /*
   for (int i = 0; i < 3; i++){
@@ -551,7 +700,6 @@ void setup() {
   
 */
 
-
 /*
   for(int i = 1; i < 7; i++){
     Serial.println(i);
@@ -576,9 +724,6 @@ void setup() {
     Serial.println();
   }
 */
-
-
-
 
 /*
   x_in = 0;
@@ -623,15 +768,13 @@ void setup() {
   
   fillVariable(&js1_x,    dataArray,  0,  3,  0);
  */
-
 }
-
 
 void loop() {
 
-  currentTime = millis();
+  while(tgl_sw);
 
-  //calculateDirections();
+  currentTime = millis();
 
   if(currentTime - previousTime > CYCLIC_TIME){
     previousTime = currentTime;
@@ -643,8 +786,11 @@ void loop() {
 
     decodeMessage(data);
 
-    Serial.println(js1_sw);
-    Serial.println(re_sw);
+    calculateDirection1();
+    calculateDirection2();
+
+    //Serial.println(js1_sw);
+    //Serial.println(re_sw);
 
     if(js1_sw && re_sw){
       timer0 += CYCLIC_TIME;
@@ -658,12 +804,13 @@ void loop() {
       timer0 = 0;
     }
 
-    updateLegs();
-
     if(runProgram){ // Main program
       hexaMoveAllLegsXYZ(0,0,0);
     }
 
+    tripodGait();
+
+    writeAllLegs();
   }
 
 /*
