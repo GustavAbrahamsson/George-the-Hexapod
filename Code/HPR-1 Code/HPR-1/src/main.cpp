@@ -139,13 +139,13 @@ uint8_t currentLeg;
 const double LEG_OFFSET_ANGLES[7] = {0, -0.785, -1.57, -2.36, -3.93, -4.71, -5.495}; // Radians
 
 // Input data from transmitter
-int16_t js1_x = 500;
-int16_t js1_y = 500;
+uint16_t js1_x = 500;
+uint16_t js1_y = 500;
 
 bool js1_sw = 0;
 
-int16_t js2_x = 500;
-int16_t js2_y = 500;
+uint16_t js2_x = 500;
+uint16_t js2_y = 500;
 
 bool tgl_sw = 0;
 
@@ -195,7 +195,7 @@ float rotOffsetX, rotOffsetY, rotOffsetZ;
 float amplitudeX, amplitudeY, amplitudeZ;
 float step_height_multiplier;
 
-uint8_t tripod_case[7] = {0,0,1,0,1,0,1};
+uint8_t tripod_case[7] = {0,1,2,1,2,1,2};
 
 
 
@@ -300,8 +300,26 @@ void decodeMessage(String data){
 
   if      (dataArray[23] == '1')   re_sw = 1;
   else if (dataArray[23] == '0')   re_sw = 0;
+
+  
+  if(js1_x > 1023) js1_x = 511;
+  if(js1_y > 1023) js1_y = 511;
+  if(js2_x > 1023) js2_x = 511;
+  if(js2_y > 1023) js2_y = 511;
+  
+  if(js1_x < 0) js1_x = 511;
+  if(js1_y < 0) js1_y = 511;
+  if(js2_x < 0) js2_x = 511;
+  if(js2_y < 0) js2_y = 511;
 }
  
+void constrainData(){
+  js1_x = constrain(js1_x,0,1023);
+  js1_y = constrain(js1_y,0,1023);
+  js2_x = constrain(js2_x,0,1023);
+  js2_y = constrain(js2_y,0,1023);
+}
+
 void setServo(int16_t servo, int16_t angle, uint8_t pwm) {
 
   if(servo == S13 || servo == S23 || servo == S33 || servo == S43 || servo == S53 || servo == S63){ // If femur servo
@@ -377,23 +395,19 @@ void hexaAngleSetAllLegs(int angle0, int angle1, int angle2){
 }
 
 void calculateDirection1(){ // Joystick 1
-  js1_x -= 512;
-  js1_y -= 512;
-  jsAngle1 = atan2(js1_x,js1_y) * 180/3.14;
-  jsSpeed1 = sqrtf(square(js1_x) + square(js1_y)) / 512;
+  jsAngle1 = atan2(js1_x-512,js1_y-512) * 180/3.14;
+  jsSpeed1 = sqrtf(square(js1_x-512) + square(js1_y-512)) / 512;
   if(jsSpeed1 > 1.0f) jsSpeed1 = 1.0f;
 }
 
 void calculateDirection2(){ // Joystick 2
-  js2_x -= 512;
-  js2_y -= 512;
-  jsAngle2 = atan2(js2_x,js2_y) * 180/3.14;
-  jsSpeed2 = sqrtf(square(js2_y) + square(js2_y)) / 512;
+  jsAngle2 = atan2(js2_x-512,js2_y-512) * 180/3.14;
+  jsSpeed2 = sqrtf(square(js2_y-512) + square(js2_y-512)) / 512;
   if(jsSpeed2 > 1.0f) jsSpeed2 = 1.0f;
 }
 
 void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates in mm. Returns a pointer to a vector with v0, v1 and v2
-  
+  Serial.print(leg); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
   double theta = LEG_OFFSET_ANGLES[leg];
 
   int x_temp = x;
@@ -425,6 +439,11 @@ void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates
   servoAngles[0] = v0;
   servoAngles[1] = v1;
   servoAngles[2] = v2;
+
+  Serial.println(v0);
+  Serial.println(v1);
+  Serial.println(v2);
+
 
 /*
   Serial.println(L);
@@ -458,10 +477,6 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
   
   calcInverseKinematics(leg, x_in, y_in, z_in);
   
-  Serial.println(servoAngles[0]);
-  Serial.println(servoAngles[1]);
-  Serial.println(servoAngles[2]);
-  
   setLeg(leg);
   current_x[leg] = x_in;
   current_y[leg] = y_in;
@@ -470,6 +485,8 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
 
 void hexaMoveAllLegsXYZ(int x, int y, int z){
   for(int i = 1; i < 7; i++){
+    Serial.print(i); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
+    Serial.println();
     hexaMoveLegXYZ(i,x,y,z);
   }
 }
@@ -540,10 +557,14 @@ void updateLegs(){
 
 void calculateStrides()
 {
+  int new_js1_x = js1_x;
+  int new_js1_y = js1_y;
+  int new_js2_x = js2_x;
+  int new_js2_y = js2_y;
   //compute stride lengths
-  strideX = 90*js1_x/1023;
-  strideY = 90*js1_y/1023;
-  strideR = 35*js2_x/1023;
+  strideX = 90*(new_js1_x - 512) / 512;
+  strideY = 90*(new_js1_y - 512) / 512;
+  strideR = 35*(new_js2_x - 512) / 512;
 
   //compute rotation trig
   sinRotZ = sin(radians(strideR));
@@ -579,20 +600,21 @@ void calculateAmplitudes(int leg)
 
 void tripodGait(){
 
-  if(jsSpeed1 > 0.05 || jsSpeed2 > 0.05){
-    numTicks = round(duration / CYCLIC_TIME / 2.0);
+  if((abs(js1_x-512) > 15) || (abs(js1_y-512) > 15) || (abs(js1_x-512) > 15) ||(abs(js2_y-512) > 15)|| (tick > 0)){
+    Serial.println("tripodGait()");
     calculateStrides();
+    numTicks = round(duration / CYCLIC_TIME / 2.0);
     for(int i = 1; i < 7; i++){
       calculateAmplitudes(i);
       switch (tripod_case[i]){
-      case 0:
+      case 1:
         current_x[i] = HOME_X[i] - amplitudeX*cos(M_PI*tick/numTicks);
         current_y[i] = HOME_Y[i] - amplitudeY*cos(M_PI*tick/numTicks);
         current_z[i] = HOME_Z[i] + abs(amplitudeZ)*sin(M_PI*tick/numTicks);
         if(tick >= numTicks-1) tripod_case[i] = 2;
         break;
       
-      case 1:
+      case 2:
         current_x[i] = HOME_X[i] + amplitudeX*cos(M_PI*tick/numTicks);
         current_y[i] = HOME_Y[i] + amplitudeY*cos(M_PI*tick/numTicks);
         current_z[i] = HOME_Z[i];
@@ -600,10 +622,9 @@ void tripodGait(){
         break;
       }
     }
+    if(tick < numTicks-1) tick++;
+    else tick = 0;
   }
-
-
-  
 }
 
 void writeAllLegs(){
@@ -631,15 +652,15 @@ void setup() {
 
   delay(10);
 
-  delay(2000);
+  //delay(2000);
 
-  hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+  //hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
 
-  delay(2000);
+  //delay(2000);
 
-  hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+  //hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
 
-  setLegTargetXYZ(1,0,0,0,5,0);
+  //setLegTargetXYZ(1,0,0,0,5,0);
 
 /*
   for (int i = 0; i < 3; i++){
@@ -772,8 +793,6 @@ void setup() {
 
 void loop() {
 
-  while(tgl_sw);
-
   currentTime = millis();
 
   if(currentTime - previousTime > CYCLIC_TIME){
@@ -785,32 +804,45 @@ void loop() {
     //Serial.println(data);
 
     decodeMessage(data);
+    if(!tgl_sw){
+      //constrainData();
 
-    calculateDirection1();
-    calculateDirection2();
+      //Serial.println(js1_sw);
+      //Serial.println(re_sw);
 
-    //Serial.println(js1_sw);
-    //Serial.println(re_sw);
-
-    if(js1_sw && re_sw){
-      timer0 += CYCLIC_TIME;
-      if(timer0 > 1000){
-        hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
-        runProgram = !runProgram;
+      if(js1_sw && re_sw){
+        timer0 += CYCLIC_TIME;
+        if(timer0 > 1000){
+          //hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+          runProgram = !runProgram;
+          timer0 = 0;
+        }
+      }
+      else{
         timer0 = 0;
       }
-    }
-    else{
-      timer0 = 0;
-    }
+  
+      Serial.println(js1_x);
+      Serial.println(js1_y);
 
-    if(runProgram){ // Main program
-      hexaMoveAllLegsXYZ(0,0,0);
+      int x_in = map(js1_x,0,1023,-75,75);
+      int y_in = map(js1_y,0,1023,-75,75);
+      int z_in = -10;
+
+      Serial.println(x_in);
+      Serial.println(y_in);
+  
+      hexaMoveLegXYZ(1,-x_in,y_in,z_in);
+
+      /*
+      if(runProgram){ // Main program
+        hexaMoveAllLegsXYZ(0,0,0);
+      }
+      */
+      //tripodGait();
+
+      //writeAllLegs();
     }
-
-    tripodGait();
-
-    writeAllLegs();
   }
 
 /*
