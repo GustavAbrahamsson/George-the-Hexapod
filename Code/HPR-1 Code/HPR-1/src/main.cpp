@@ -821,7 +821,7 @@ void loop() {
       else{
         timer0 = 0;
       }
-  
+      /*
       Serial.println(js1_x);
       Serial.println(js1_y);
 
@@ -833,15 +833,15 @@ void loop() {
       Serial.println(y_in);
   
       hexaMoveLegXYZ(1,-x_in,y_in,z_in);
-
+      */
       /*
       if(runProgram){ // Main program
         hexaMoveAllLegsXYZ(0,0,0);
       }
       */
-      //tripodGait();
+      tripodGait();
 
-      //writeAllLegs();
+      writeAllLegs();
     }
   }
 
