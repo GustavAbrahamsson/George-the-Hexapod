@@ -560,7 +560,7 @@ void calculateStrides()
   int new_js1_x = js1_x;
   int new_js1_y = js1_y;
   int new_js2_x = js2_x;
-  int new_js2_y = js2_y;
+  //int new_js2_y = js2_y;
   //compute stride lengths
   strideX = 90*(new_js1_x - 512) / 512;
   strideY = 90*(new_js1_y - 512) / 512;
@@ -588,8 +588,8 @@ void calculateAmplitudes(int leg)
   //compute X and Y amplitude and constrain to prevent legs from crashing into each other
   amplitudeX = ((strideX + rotOffsetX) / 2.0);
   amplitudeY = ((strideY + rotOffsetY) / 2.0);
-  amplitudeX = constrain(amplitudeX,-50,50);
-  amplitudeY = constrain(amplitudeY,-50,50);
+  amplitudeX = constrain(amplitudeX, -50, 50);
+  amplitudeY = constrain(amplitudeY, -50, 50);
 
   //compute Z amplitude
   if(abs(strideX + rotOffsetX) > abs(strideY + rotOffsetY))
@@ -607,17 +607,17 @@ void tripodGait(){
     for(int i = 1; i < 7; i++){
       calculateAmplitudes(i);
       switch (tripod_case[i]){
-      case 1:
-        current_x[i] = HOME_X[i] - amplitudeX*cos(M_PI*tick/numTicks);
-        current_y[i] = HOME_Y[i] - amplitudeY*cos(M_PI*tick/numTicks);
-        current_z[i] = HOME_Z[i] + abs(amplitudeZ)*sin(M_PI*tick/numTicks);
+      case 1: // Removed HOME_`[i] everywhere here since it's already the origin!
+        current_x[i] = -amplitudeX*cos(M_PI*tick/numTicks);
+        current_y[i] = -amplitudeY*cos(M_PI*tick/numTicks);
+        current_z[i] = abs(amplitudeZ)*sin(M_PI*tick/numTicks);
         if(tick >= numTicks-1) tripod_case[i] = 2;
         break;
       
-      case 2:
-        current_x[i] = HOME_X[i] + amplitudeX*cos(M_PI*tick/numTicks);
-        current_y[i] = HOME_Y[i] + amplitudeY*cos(M_PI*tick/numTicks);
-        current_z[i] = HOME_Z[i];
+      case 2: // Removed HOME_`[i] everywhere here since it's already the origin!
+        current_x[i] = amplitudeX*cos(M_PI*tick/numTicks);
+        current_y[i] = amplitudeY*cos(M_PI*tick/numTicks);
+        current_z[i] = 0;
         if(tick >= numTicks-1) tripod_case[i] = 1;
         break;
       }
