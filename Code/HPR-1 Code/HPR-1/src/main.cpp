@@ -66,11 +66,9 @@ Adafruit_PWMServoDriver pwm2 = Adafruit_PWMServoDriver(0x41);
 #define S62 14 // Leg 6: Servo 2
 #define S63 15 // Leg 6: Servo 3
 
-
 // Angle offsets for all servos:
 int PWM1_SERVO_ANGLE_OFFSETS[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 int PWM2_SERVO_ANGLE_OFFSETS[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
 
 // General:
 unsigned long currentTime = 0;
@@ -88,7 +86,7 @@ const double COXA = 47; // mm
 const double L1 = 95; // mm
 const double L2 = 140; // mm
 
-const int Z_HOME_VALUE = -50;
+const int Z_HOME_VALUE = -75;
 /*
 const int HOME_X[7] = {  0, 140,   0,  -140,  -140,    0,    140 };  //coxa-to-toe home positions (leg 1: index 1 ... leg 6: index 6)
 const int HOME_Y[7] = {  0, 140,   198,  140,  -140,   -198,  -140 };
@@ -137,6 +135,7 @@ uint8_t servoAngles[3];
 uint8_t currentLeg;
 
 const double LEG_OFFSET_ANGLES[7] = {0, -0.785, -1.57, -2.36, -3.93, -4.71, -5.495}; // Radians
+//const double LEG_OFFSET_ANGLES[7] =   {0, 2.36, 1.57, 0.785, -3.93, -4.71, -5.495}; // Radians
 
 // Input data from transmitter
 uint16_t js1_x = 500;
@@ -175,7 +174,7 @@ float jsSpeed1 = 0;
 float jsSpeed2 = 0;
 
 // Gait
-const uint8_t CYCLIC_TIME = 100; // ms
+const uint8_t CYCLIC_TIME = 20; // ms
 const uint8_t LEG_CYCLIC_TIME = 50; // ms
 
 float strideX = 0;
@@ -229,7 +228,7 @@ void setupServoAngleOffsets(){
 }
 
 void setupNRF() {
-  Serial.begin(9600);
+  //Serial.begin(9600);
   radio.begin();
   radio.openReadingPipe(0, address);
   radio.setPALevel(RF24_PA_MIN);
@@ -561,14 +560,19 @@ void updateLegs(){
 
 void calculateStrides()
 {
-  int new_js1_x = js1_x;
-  int new_js1_y = js1_y;
-  int new_js2_x = js2_x;
-  //int new_js2_y = js2_y;
+  int new_js1_x = js1_x - 512;
+  int new_js1_y = js1_y - 512;
+  int new_js2_x = js2_x - 512;
+  int new_js2_y = js2_y - 512;
+
   //compute stride lengths
-  strideX = 90*(new_js1_x - 512) / 512;
-  strideY = 90*(new_js1_y - 512) / 512;
-  strideR = 35*(new_js2_x - 512) / 512;
+  strideX = 90*(new_js1_y) / 512;
+  strideY = 90*(new_js1_x) / 512;
+  strideR = 35*(new_js2_x) / 512;
+  
+  strideX = 90*(0);
+  strideY = 90*(1);
+  strideR = 35*(0);
 
   Serial.print("strideX: "); Serial.println(strideX);
   Serial.print("strideY: "); Serial.println(strideY);
@@ -641,16 +645,68 @@ void writeAllLegs(){
   }
 }
 
+void goHome(){
+  delay(500);
+  for (int i = 1; i < 7; i++){
+    current_z[i] = -70;
+  }
+  writeAllLegs();
+  servoAngles[0] = 90;
+  servoAngles[1] = 170;
+  servoAngles[2] = 15;
+  delay(1000);
+  for (int i = 1; i < 7; i += 2){
+    setLeg(i);
+  }
+  delay(500);
+
+  for(int i = current_z[1]; i > Z_HOME_VALUE; i--){
+    for (int j = 2; j < 7; j += 2){
+      delay(20);
+      hexaMoveLegXYZ(j, current_x[j], current_y[j], i);
+    }
+  }
+  delay(1000);
+  servoAngles[2] = 45;
+  for (int i = 2; i < 7; i += 2){
+    setLeg(i);
+  }
+  delay(1000);
+  servoAngles[2] = 15;
+  for (int i = 2; i < 7; i += 2){
+    setLeg(i);
+  }
+  delay(1000);
+
+  
+}
+
 void initGait(){
   gait_speed = 0;
-  step_height_multiplier = 1.0;
+  step_height_multiplier = 2.5;
+}
+
+void checkIKonAllLegs(){
+  for(int k = 0; 0 < 3; k++){
+      
+      for(int j = -50; j <= 50; j++){
+        hexaMoveAllLegsXYZ(j,0,0);
+        delay(50);
+      }
+      for(int j = -50; j <= 50; j++){
+        hexaMoveAllLegsXYZ(0,j,0);
+        delay(50);
+      }
+  }
+  
+  
 }
 
 void setup() {
   setupNRF();
   setupServoAngleOffsets();
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
   Serial.println("HPR-1 started");
  
   pwm1.begin();
@@ -666,6 +722,9 @@ void setup() {
   delay(10);
 
   initGait();
+
+  checkIKonAllLegs();
+  delay(5000);
 
   //delay(2000);
 
@@ -821,9 +880,6 @@ void loop() {
 
     decodeMessage(data);
 
-    js1_x = 500;
-    js1_y = 1000;
-
     if(!tgl_sw){
       //constrainData();
 
@@ -834,8 +890,10 @@ void loop() {
         timer0 += CYCLIC_TIME;
         if(timer0 > 1000){
           //hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+          goHome();
           runProgram = !runProgram;
           timer0 = 0;
+          abortProgram("ROBOT RESET TO HOME. REBOOT TO USE");
         }
       }
       else{
