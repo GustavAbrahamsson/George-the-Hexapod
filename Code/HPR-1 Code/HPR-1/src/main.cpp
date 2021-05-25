@@ -407,7 +407,9 @@ void calculateDirection2(){ // Joystick 2
 }
 
 void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates in mm. Returns a pointer to a vector with v0, v1 and v2
-  Serial.print(leg); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
+  if(leg == 1){
+    Serial.print(leg); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
+  }
   double theta = LEG_OFFSET_ANGLES[leg];
 
   int x_temp = x;
@@ -485,7 +487,9 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
 
 void hexaMoveAllLegsXYZ(int x, int y, int z){
   for(int i = 1; i < 7; i++){
-    Serial.print(i); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
+    if(i == 1){
+      Serial.print(i); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
+    }
     Serial.println();
     hexaMoveLegXYZ(i,x,y,z);
   }
@@ -566,6 +570,10 @@ void calculateStrides()
   strideY = 90*(new_js1_y - 512) / 512;
   strideR = 35*(new_js2_x - 512) / 512;
 
+  Serial.print("strideX: "); Serial.println(strideX);
+  Serial.print("strideY: "); Serial.println(strideY);
+  Serial.print("strideR: "); Serial.println(strideR);
+
   //compute rotation trig
   sinRotZ = sin(radians(strideR));
   cosRotZ = cos(radians(strideR));
@@ -633,6 +641,11 @@ void writeAllLegs(){
   }
 }
 
+void initGait(){
+  gait_speed = 0;
+  step_height_multiplier = 1.0;
+}
+
 void setup() {
   setupNRF();
   setupServoAngleOffsets();
@@ -651,6 +664,8 @@ void setup() {
   pwm2.setOscillatorFrequency(27000000);
 
   delay(10);
+
+  initGait();
 
   //delay(2000);
 
@@ -798,12 +813,17 @@ void loop() {
   if(currentTime - previousTime > CYCLIC_TIME){
     previousTime = currentTime;
 
+
     String data = receiveData();
 
     //Serial.println("receiveData():");
     //Serial.println(data);
 
     decodeMessage(data);
+
+    js1_x = 500;
+    js1_y = 1000;
+
     if(!tgl_sw){
       //constrainData();
 
