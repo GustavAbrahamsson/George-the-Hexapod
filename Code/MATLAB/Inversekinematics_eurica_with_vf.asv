@@ -8,9 +8,9 @@ axis equal
 
 %vf=pi/2;
 
-x_in=0.156;
-y_in=-0.075;
-z_in=0.000;
+x_in=0.140;
+y_in=-0.090;
+z_in=0.140;
 
 x=x_in;
 y=y_in;
@@ -133,6 +133,11 @@ for i=1:1
     
 end
 
+v0 = 100;
+v1 = 121;
+v2 = 
+
+
 P_0=[0,0,0];
 
 x0=cos(v0)*coxa;
@@ -176,8 +181,8 @@ subspace(P2',P')*180/pi
 subspace(P2',P')*180/pi
 
 legend({"A1 ="+A1*180/pi,"A2 ="+A2*180/pi,"B1 ="+B1*180/pi,"B2 ="+B2*180/pi,"v1 ="+v1*180/pi,"v2 ="+v2*180/pi},'Location','southeast')
-v0*180/pi
-v1*180/pi
-v2*180/pi
+v0*180/3.14
+v1*180/3.14
+v2*180/3.14
 
 

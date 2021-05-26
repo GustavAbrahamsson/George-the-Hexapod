@@ -71,8 +71,11 @@ int PWM1_SERVO_ANGLE_OFFSETS[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 int PWM2_SERVO_ANGLE_OFFSETS[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // General:
+const uint16_t DATA_TIME = 500; // ms
+
 unsigned long currentTime = 0;
 unsigned long previousTime = 0;
+unsigned long previousDataTime = 0;
 bool runProgram = 1;
 unsigned long timer0 = 0;
 unsigned long timer1 = 0;
@@ -118,7 +121,6 @@ bool arc_leg[7] = {  0, 0, 0, 0, 0, 0, 0 };
 int8_t velocity[7] = {  0, 0, 0, 0, 0, 0, 0 };
 
 bool updateLeg[7] = {  0, 0, 0, 0, 0, 0, 0 };
-
 
 // Inverse kinematics:
 double A_1 = 0;
@@ -196,8 +198,6 @@ float step_height_multiplier;
 
 uint8_t tripod_case[7] = {0,1,2,1,2,1,2};
 
-
-
 void abortProgram(String error){
   Serial.print("ERROR: ");
   Serial.println(error);
@@ -228,7 +228,6 @@ void setupServoAngleOffsets(){
 }
 
 void setupNRF() {
-  //Serial.begin(9600);
   radio.begin();
   radio.openReadingPipe(0, address);
   radio.setPALevel(RF24_PA_MIN);
@@ -413,6 +412,14 @@ void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates
 
   int x_temp = x;
 
+  // Maybe the following code to fix?
+  /*
+  if(leg == 1 || leg == 3){ // Switch x and y coordinates
+    x_temp = y;
+    y = x;
+  }
+  */
+
   x = cos(theta) * x      - sin(theta) * y; // Rotation matrix
   y = sin(theta) * x_temp + cos(theta) * y;
   
@@ -440,11 +447,6 @@ void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates
   servoAngles[0] = v0;
   servoAngles[1] = v1;
   servoAngles[2] = v2;
-
-  Serial.println(v0);
-  Serial.println(v1);
-  Serial.println(v2);
-
 
 /*
   Serial.println(L);
@@ -482,6 +484,10 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
   current_x[leg] = x_in;
   current_y[leg] = y_in;
   current_z[leg] = z_in;
+
+  Serial.print("v0 = "); Serial.println(v0);
+  Serial.print("v1 = "); Serial.println(v1);
+  Serial.print("v2 = "); Serial.println(v2);
 }
 
 void hexaMoveAllLegsXYZ(int x, int y, int z){
@@ -706,7 +712,8 @@ void setup() {
   setupNRF();
   setupServoAngleOffsets();
 
-  //Serial.begin(9600);
+  Serial.begin(9600);
+
   Serial.println("HPR-1 started");
  
   pwm1.begin();
@@ -723,8 +730,19 @@ void setup() {
 
   initGait();
 
-  checkIKonAllLegs();
-  delay(5000);
+  String data = receiveData();
+  decodeMessage(data);
+  constrainData();
+
+  //checkIKonAllLegs();
+
+  hexaMoveAllLegsXYZ(0,0,0);
+
+  delay(1000);
+
+  hexaMoveAllLegsXYZ(50,0,0);
+
+  while(1);
 
   //delay(2000);
 
@@ -783,7 +801,6 @@ void setup() {
   setServo(S51,100,2);
   setServo(S61,100,2);
 
-  
   int x_in = 40;
   int y_in = 150;
   int z_in = -60;
@@ -869,19 +886,20 @@ void loop() {
 
   currentTime = millis();
 
-  if(currentTime - previousTime > CYCLIC_TIME){
-    previousTime = currentTime;
-
+  if(currentTime - previousDataTime > DATA_TIME){
+    previousDataTime = currentTime;
 
     String data = receiveData();
 
-    //Serial.println("receiveData():");
-    //Serial.println(data);
-
     decodeMessage(data);
 
+    constrainData();
+  }
+
+  if(currentTime - previousTime > CYCLIC_TIME){
+    previousTime = currentTime;
+
     if(!tgl_sw){
-      //constrainData();
 
       //Serial.println(js1_sw);
       //Serial.println(re_sw);
