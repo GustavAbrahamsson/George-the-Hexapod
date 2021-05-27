@@ -135,7 +135,7 @@ int16_t v2 = 0; // S_3 angle
 uint8_t servoAngles[3];
 
 uint8_t currentLeg;
-
+// ORIGINAL: const double LEG_OFFSET_ANGLES[7] = {0, -0.785, -1.57, -2.36, -3.93, -4.71, -5.495};
 const double LEG_OFFSET_ANGLES[7] = {0, -0.785, -1.57, -2.36, -3.93, -4.71, -5.495}; // Radians
 //const double LEG_OFFSET_ANGLES[7] =   {0, 2.36, 1.57, 0.785, -3.93, -4.71, -5.495}; // Radians
 
@@ -152,6 +152,11 @@ bool tgl_sw = 0;
 
 int16_t re_value = 0;
 bool re_sw = 0;
+
+int default_js1_x = 500;
+int default_js1_y = 500;
+int default_js2_x = 500;
+int default_js2_y = 500;
 
 int pos0 = 102; // 102    SG90: 107, 525
 int pos180 = 475; // 475  (old: 512)
@@ -238,7 +243,7 @@ String receiveData() {
     char text[64] = "";
     radio.read(&text, sizeof(text));
     //Serial.println("Radio available!");
-    Serial.println(text);
+    //Serial.println(text);
     return text;
   }
   //Serial.println("Failed! Program aborted!");
@@ -273,7 +278,7 @@ void fillVariable(int16_t *receiver, char *donator, int index0, int index1, bool
     output += (donator[i]-'0') * j;
     j /= 10;
   }
-  Serial.println(donator[index0 - 1]);
+  //Serial.println(donator[index0 - 1]);
   if(isSigned && (donator[index0 - 1] == '1')) output = -output;
   *receiver = output;
 }
@@ -384,11 +389,13 @@ void hexaAngleSetAllLegs(int angle0, int angle1, int angle2){
   servoAngles[2] = angle2;
   for (int i = 1; i < 7; i++){
     setLeg(i);
+    /*
     Serial.println(i);
     Serial.println();
     Serial.println(servoAngles[0]);
     Serial.println(servoAngles[1]);
     Serial.println(servoAngles[2]);
+    */
   }
 }
 
@@ -405,21 +412,13 @@ void calculateDirection2(){ // Joystick 2
 }
 
 void calcInverseKinematics(uint8_t leg, int x, int y, int z){ // All coordinates in mm. Returns a pointer to a vector with v0, v1 and v2
-  if(leg == 1){
-    Serial.print(leg); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
-  }
+//if(leg == 1){
+//  Serial.print(leg); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
+//}
   double theta = LEG_OFFSET_ANGLES[leg];
 
   int x_temp = x;
-
-  // Maybe the following code to fix?
-  /*
-  if(leg == 1 || leg == 3){ // Switch x and y coordinates
-    x_temp = y;
-    y = x;
-  }
-  */
-
+  
   x = cos(theta) * x      - sin(theta) * y; // Rotation matrix
   y = sin(theta) * x_temp + cos(theta) * y;
   
@@ -472,6 +471,26 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
   int y_in = HOME_Y[leg];
   int z_in = HOME_Z[leg];
 
+  int x_temp;
+
+  switch(leg){ // Ugly af fix, something wrong with rotation matrix but this works lol
+    case 1: // Fixed leg 1!
+      x_temp = x;
+      x=y;
+      y=x_temp;
+      break;
+
+    case 2: // Fixed leg 2!
+      x=-x;
+      break;
+
+    case 3: // Fixed leg 3!
+      x_temp = x;
+      x=-y;
+      y=-x_temp;
+      break;
+  }
+
   x_in = HOME_X[leg] + x;
   y_in = HOME_Y[leg] + y;
   z_in = HOME_Z[leg] + z;
@@ -484,10 +503,11 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
   current_x[leg] = x_in;
   current_y[leg] = y_in;
   current_z[leg] = z_in;
-
+/*
   Serial.print("v0 = "); Serial.println(v0);
   Serial.print("v1 = "); Serial.println(v1);
   Serial.print("v2 = "); Serial.println(v2);
+  */
 }
 
 void hexaMoveAllLegsXYZ(int x, int y, int z){
@@ -495,7 +515,7 @@ void hexaMoveAllLegsXYZ(int x, int y, int z){
     if(i == 1){
       Serial.print(i); Serial.print(" "); Serial.print(x); Serial.print(" "); Serial.print(y); Serial.print(" ");Serial.println(z);
     }
-    Serial.println();
+    //Serial.println();
     hexaMoveLegXYZ(i,x,y,z);
   }
 }
@@ -566,31 +586,59 @@ void updateLegs(){
 
 void calculateStrides()
 {
-  int new_js1_x = js1_x - 512;
-  int new_js1_y = js1_y - 512;
-  int new_js2_x = js2_x - 512;
-  int new_js2_y = js2_y - 512;
+  int new_js1_x = js1_x;
+  int new_js1_y = js1_y;
+  int new_js2_x = js2_x;
+
+  new_js1_x -= default_js1_x; // + 1
+  new_js1_y -= default_js1_y; // + 11
+  new_js2_x -= default_js2_x; // - 19
+
+  //int new_js2_y = js2_y - 512;
+
+  
 
   //compute stride lengths
-  strideX = 90*(new_js1_y) / 512;
+  /*
+  strideX = -90*(new_js1_y) / 512;
   strideY = 90*(new_js1_x) / 512;
-  strideR = 35*(new_js2_x) / 512;
+  strideR = 15*(new_js2_x) / 512;
+  */
+
+  strideY =  50*map(new_js1_x,-default_js1_x,1023-default_js1_x,-100,100)/100;
+  strideX = -50*map(new_js1_y,-default_js1_y,1023-default_js1_y,-100,100)/100;
+  strideR = 15*map(new_js2_x,-default_js2_x,1023-default_js2_x,-100,100)/100;
+
+  if(abs(strideR) < 3){
+    strideX = strideX * 1.25;
+    strideY = strideY * 1.25;
+  }
+
+
+  Serial.println(strideX);
+  Serial.println(strideY);
+  Serial.println(strideX);
+  Serial.println();
+  //delay(500);
   
+  /*
   strideX = 90*(0);
   strideY = 90*(1);
   strideR = 35*(0);
+  */
 
+/*
   Serial.print("strideX: "); Serial.println(strideX);
   Serial.print("strideY: "); Serial.println(strideY);
   Serial.print("strideR: "); Serial.println(strideR);
-
+*/
   //compute rotation trig
   sinRotZ = sin(radians(strideR));
   cosRotZ = cos(radians(strideR));
 
   //set duration for normal and slow speed modes
-  if(gait_speed == 0) duration = 1080; 
-  else duration = 3240;
+  if(gait_speed == 0) duration = 1080; // 1080
+  else duration = 750; // 3240
 }
 
 void calculateAmplitudes(int leg)
@@ -618,8 +666,8 @@ void calculateAmplitudes(int leg)
 
 void tripodGait(){
 
-  if((abs(js1_x-512) > 15) || (abs(js1_y-512) > 15) || (abs(js1_x-512) > 15) ||(abs(js2_y-512) > 15)|| (tick > 0)){
-    Serial.println("tripodGait()");
+  if((abs(js1_x-512) > 30) || (abs(js1_y-512) > 30) || (abs(js1_x-512) > 30) ||(abs(js2_y-512) > 30)|| (tick > 0)){
+    //Serial.println("tripodGait()");
     calculateStrides();
     numTicks = round(duration / CYCLIC_TIME / 2.0);
     for(int i = 1; i < 7; i++){
@@ -692,7 +740,32 @@ void initGait(){
   step_height_multiplier = 2.5;
 }
 
+void initController(){
+  default_js1_x = js1_x;
+  default_js1_y = js1_y;
+  default_js2_x = js2_x;
+  default_js2_y = js2_y;
+}
+
 void checkIKonAllLegs(){
+  hexaMoveAllLegsXYZ(0,0,0);
+  delay(5000);
+  hexaMoveAllLegsXYZ(50,0,0);
+  delay(3000);
+  hexaMoveAllLegsXYZ(0,0,0);
+  delay(3000);
+  hexaMoveAllLegsXYZ(-50,0,0);
+  delay(3000);
+  hexaMoveAllLegsXYZ(0,0,0);
+  delay(3000);
+  hexaMoveAllLegsXYZ(0,50,0);
+  delay(3000);
+  hexaMoveAllLegsXYZ(0,0,0);
+  delay(3000);
+  hexaMoveAllLegsXYZ(0,-50,0);
+  delay(3000);
+
+  /*
   for(int k = 0; 0 < 3; k++){
       
       for(int j = -50; j <= 50; j++){
@@ -704,15 +777,23 @@ void checkIKonAllLegs(){
         delay(50);
       }
   }
+  */
   
-  
+}
+
+void dataFunction(){
+  String data = receiveData();
+
+  decodeMessage(data);
+
+  constrainData();
 }
 
 void setup() {
   setupNRF();
   setupServoAngleOffsets();
 
-  Serial.begin(9600);
+  //Serial.begin(9600);
 
   Serial.println("HPR-1 started");
  
@@ -728,21 +809,22 @@ void setup() {
 
   delay(10);
 
+  dataFunction();
+
   initGait();
 
-  String data = receiveData();
-  decodeMessage(data);
-  constrainData();
-
-  //checkIKonAllLegs();
+  initController();
 
   hexaMoveAllLegsXYZ(0,0,0);
 
-  delay(1000);
-
+  //checkIKonAllLegs();
+/*
   hexaMoveAllLegsXYZ(50,0,0);
-
-  while(1);
+  delay(5000);
+  hexaMoveAllLegsXYZ(50,-50,0);
+  delay(5000);
+  hexaMoveAllLegsXYZ(0,-50,0);
+*/
 
   //delay(2000);
 
@@ -774,43 +856,6 @@ void setup() {
   }
   
  */
-
-
-  /*
-  setServo(S12,180,1);
-  setServo(S22,180,1);
-  setServo(S32,180,1);
-
-  setServo(S42,180,2);
-  setServo(S52,180,2);
-  setServo(S62,180,2);
-
-  setServo(S13,0,1);
-  setServo(S23,0,1);
-  setServo(S33,0,1);
-
-  setServo(S43,0,2);
-  setServo(S53,0,2);
-  setServo(S63,0,2);
-
-  setServo(S11,100,1);
-  setServo(S21,100,1);
-  setServo(S31,100,1);
-
-  setServo(S41,100,2);
-  setServo(S51,100,2);
-  setServo(S61,100,2);
-
-  int x_in = 40;
-  int y_in = 150;
-  int z_in = -60;
-
-  for(int i = 1; i < 7; i++){
-    Serial.println(LEG_OFFSET_ANGLES[i] * RAD_TO_DEG);
-
-  }
-  
-*/
 
 /*
   for(int i = 1; i < 7; i++){
@@ -886,29 +931,41 @@ void loop() {
 
   currentTime = millis();
 
-  if(currentTime - previousDataTime > DATA_TIME){
+  if(currentTime - previousDataTime > CYCLIC_TIME*7){
+
+    //Serial.println("Data");
     previousDataTime = currentTime;
 
-    String data = receiveData();
-
-    decodeMessage(data);
-
-    constrainData();
+    dataFunction();
   }
 
   if(currentTime - previousTime > CYCLIC_TIME){
     previousTime = currentTime;
 
+    if(js1_sw && !re_sw){
+      timer1 += CYCLIC_TIME;
+      if(timer1 > 1000){
+        if (gait_speed == 0) gait_speed = 1;
+        else gait_speed = 0;
+        
+        timer1 = 0;
+      }
+    }
+    else{
+      timer1 = 0;
+    }
+
     if(!tgl_sw){
+      //Serial.println("Main loop");
 
       //Serial.println(js1_sw);
       //Serial.println(re_sw);
-
+      /*
       if(js1_sw && re_sw){
         timer0 += CYCLIC_TIME;
         if(timer0 > 1000){
           //hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
-          goHome();
+          //goHome();
           runProgram = !runProgram;
           timer0 = 0;
           abortProgram("ROBOT RESET TO HOME. REBOOT TO USE");
@@ -917,6 +974,11 @@ void loop() {
       else{
         timer0 = 0;
       }
+      */
+
+      tripodGait();
+
+      writeAllLegs();
       /*
       Serial.println(js1_x);
       Serial.println(js1_y);
@@ -935,9 +997,6 @@ void loop() {
         hexaMoveAllLegsXYZ(0,0,0);
       }
       */
-      tripodGait();
-
-      writeAllLegs();
     }
   }
 
