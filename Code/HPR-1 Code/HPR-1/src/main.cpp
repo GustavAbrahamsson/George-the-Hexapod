@@ -596,28 +596,41 @@ void calculateStrides()
 
   //int new_js2_y = js2_y - 512;
 
-  
+
+  jsAngle1 = atan2(new_js1_x, new_js1_y);
+  jsSpeed1 = sqrt(square(new_js1_x) + square(new_js1_y));
+
+  if(jsSpeed1 > 512) jsSpeed1 = 512;
+
+  strideY =  50*sin(jsAngle1) * map(jsSpeed1,0,512,-100,100) / 100;
+  strideX = -50*cos(jsAngle1) * map(jsSpeed1,0,512,-100,100) / 100;
 
   //compute stride lengths
-  /*
-  strideX = -90*(new_js1_y) / 512;
-  strideY = 90*(new_js1_x) / 512;
-  strideR = 15*(new_js2_x) / 512;
-  */
 
-  strideY =  50*map(new_js1_x,-default_js1_x,1023-default_js1_x,-100,100)/100;
-  strideX = -50*map(new_js1_y,-default_js1_y,1023-default_js1_y,-100,100)/100;
-  strideR = 15*map(new_js2_x,-default_js2_x,1023-default_js2_x,-100,100)/100;
+  //strideY =  50*map(new_js1_x,-default_js1_x,1023-default_js1_x,-100,100)/100;
+  //strideX = -50*map(new_js1_y,-default_js1_y,1023-default_js1_y,-100,100)/100;
+  strideR =  15*map(new_js2_x,-default_js2_x,1023-default_js2_x,-100,100)/100;
 
   if(abs(strideR) < 3){
-    strideX = strideX * 1.25;
-    strideY = strideY * 1.25;
+    strideX = strideX * 2;
+    strideY = strideY * 2;
   }
 
+  if(abs(new_js1_x) < 30){
+    strideY = 0;
+  }
+
+  if(abs(new_js1_y) < 30){
+    strideX = 0;
+  }
+  if(abs(new_js2_x) < 30){
+    strideR = 0;
+  }
 
   Serial.println(strideX);
   Serial.println(strideY);
-  Serial.println(strideX);
+  Serial.println(jsAngle1);
+  Serial.println(jsSpeed1);
   Serial.println();
   //delay(500);
   
