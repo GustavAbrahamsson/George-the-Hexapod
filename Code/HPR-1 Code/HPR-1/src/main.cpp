@@ -71,6 +71,8 @@ int PWM1_SERVO_ANGLE_OFFSETS[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 int PWM2_SERVO_ANGLE_OFFSETS[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // General:
+bool standUpSequence = true;
+
 const uint16_t DATA_TIME = 500; // ms
 
 unsigned long currentTime = 0;
@@ -90,6 +92,11 @@ const double L1 = 95; // mm
 const double L2 = 140; // mm
 
 const int Z_HOME_VALUE = -75;
+
+int zOffset = 0;
+const uint8_t Z_OFFSET_MAX = 100;
+const int8_t Z_OFFSET_MIN = -75;
+
 /*
 const int HOME_X[7] = {  0, 140,   0,  -140,  -140,    0,    140 };  //coxa-to-toe home positions (leg 1: index 1 ... leg 6: index 6)
 const int HOME_Y[7] = {  0, 140,   198,  140,  -140,   -198,  -140 };
@@ -300,6 +307,9 @@ void decodeMessage(String data){
   else if (dataArray[17] == '0')   tgl_sw = 0;
 
   fillVariable(&re_value, dataArray,  18, 22, 1);
+  if (re_value < Z_OFFSET_MIN) re_value = Z_OFFSET_MIN;
+  if (re_value > Z_OFFSET_MAX) re_value = Z_OFFSET_MAX;
+  
 
   if      (dataArray[23] == '1')   re_sw = 1;
   else if (dataArray[23] == '0')   re_sw = 0;
@@ -708,7 +718,7 @@ void tripodGait(){
 
 void writeAllLegs(){
   for(int i = 1; i < 7; i++){
-    hexaMoveLegXYZ(i, current_x[i], current_y[i], current_z[i]);
+    hexaMoveLegXYZ(i, current_x[i], current_y[i], current_z[i] + zOffset);
   }
 }
 
@@ -806,29 +816,63 @@ void setup() {
   setupNRF();
   setupServoAngleOffsets();
 
-  //Serial.begin(9600);
+  Serial.begin(9600);
 
   Serial.println("HPR-1 started");
  
   pwm1.begin();
   pwm1.setPWMFreq(50);  // This is the maximum PWM frequency
-
   pwm1.setOscillatorFrequency(27000000);
-
   pwm2.begin();
   pwm2.setPWMFreq(50);
-
   pwm2.setOscillatorFrequency(27000000);
-
   delay(10);
-
   dataFunction();
-
   initGait();
-
   initController();
+  hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
 
-  hexaMoveAllLegsXYZ(0,0,0);
+  while(!tgl_sw){
+    currentTime = millis();
+
+    if(currentTime - previousDataTime > CYCLIC_TIME*7){
+      //Serial.println("Data");
+      previousDataTime = currentTime;
+      dataFunction();
+    }
+  }
+
+  delay(50);
+
+  while(tgl_sw){
+    currentTime = millis();
+
+    if(currentTime - previousDataTime > CYCLIC_TIME*7){
+      //Serial.println("Data");
+      previousDataTime = currentTime;
+      dataFunction();
+    }
+  }
+
+  delay(50);
+  
+  while(!tgl_sw){
+    currentTime = millis();
+
+    if(currentTime - previousDataTime > CYCLIC_TIME*7){
+      //Serial.println("Data");
+      previousDataTime = currentTime;
+      dataFunction();
+    }
+  }
+
+  hexaMoveAllLegsXYZ(0,0,-Z_HOME_VALUE);
+/*
+  for (int i = 0; i < Z_HOME_VALUE; i++){
+    hexaMoveAllLegsXYZ(0,0,-i-Z_HOME_VALUE);
+    delay(1000);
+  }
+  */
 
   //checkIKonAllLegs();
 /*
@@ -968,7 +1012,20 @@ void loop() {
       timer1 = 0;
     }
 
-    if(!tgl_sw){
+    if(standUpSequence){
+      Serial.println("StandupSequence");
+      //zOffset -= 10;
+      Serial.println(zOffset);
+      delay(100);
+      if(zOffset <= Z_HOME_VALUE){
+        zOffset = 0;
+        standUpSequence = false;
+      }
+      //hexaMoveAllLegsXYZ(0,0,0);
+      
+      writeAllLegs();
+    }
+    else if(!tgl_sw){
       //Serial.println("Main loop");
 
       //Serial.println(js1_sw);
@@ -988,6 +1045,10 @@ void loop() {
         timer0 = 0;
       }
       */
+
+      
+      if(2*re_value < Z_OFFSET_MAX && 2*re_value > Z_OFFSET_MIN) zOffset = -2*re_value; // Control height offset with rotary encoder
+      //else zOffset = 0;
 
       tripodGait();
 
