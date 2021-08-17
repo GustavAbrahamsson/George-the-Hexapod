@@ -71,13 +71,15 @@ int PWM1_SERVO_ANGLE_OFFSETS[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 int PWM2_SERVO_ANGLE_OFFSETS[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // General:
-bool standUpSequence = true;
+bool standUpSequence = 1;
+bool sitDownSequence = 0;
 
 const uint16_t DATA_TIME = 500; // ms
 
 unsigned long currentTime = 0;
-unsigned long previousTime = 0;
 unsigned long previousDataTime = 0;
+unsigned long previousTimeCyclic = 0;
+unsigned long previousTimeStandSitUp = 0;
 bool runProgram = 1;
 unsigned long timer0 = 0;
 unsigned long timer1 = 0;
@@ -199,6 +201,8 @@ int gait_speed = 0;
 int numTicks;
 int tick = 0;
 int duration = 0;
+
+bool sittingDown = 1;
 
 int totalX, totalY, totalZ;
 
@@ -505,7 +509,10 @@ void hexaMoveLegXYZ(int leg, int x, int y, int z){
   y_in = HOME_Y[leg] + y;
   z_in = HOME_Z[leg] + z;
 
-  if(z_in > 0) abortProgram("POSITIVE Z VALUE TARGETET");
+  if(z_in > 0) {
+    //abortProgram("POSITIVE Z VALUE TARGETED"); Is aborting really necessary?
+    z_in = 0;
+  }
   
   calcInverseKinematics(leg, x_in, y_in, z_in);
   
@@ -760,7 +767,7 @@ void goHome(){
 
 void initGait(){
   gait_speed = 0;
-  step_height_multiplier = 2.5;
+  step_height_multiplier = 2.25;
 }
 
 void initController(){
@@ -996,8 +1003,8 @@ void loop() {
     dataFunction();
   }
 
-  if(currentTime - previousTime > CYCLIC_TIME){
-    previousTime = currentTime;
+  if(currentTime - previousTimeCyclic > CYCLIC_TIME){
+    previousTimeCyclic = currentTime;
 
     if(js1_sw && !re_sw){
       timer1 += CYCLIC_TIME;
@@ -1011,21 +1018,48 @@ void loop() {
     else{
       timer1 = 0;
     }
-
+  /*
+    if(re_sw){
+      timer2 += CYCLIC_TIME;
+      if(timer2 > 1000){
+        if (sittingDown == 1) {
+          standUpSequence = 1;
+        }
+        else{
+          sitDownSequence = 1;
+        }
+        timer2 = 0;
+      }
+    }
+    else timer2 = 0;
+*/
     if(standUpSequence){
-      Serial.println("StandupSequence");
-      //zOffset -= 10;
+      Serial.println("standupSequence");
+      zOffset -= 1;
       Serial.println(zOffset);
-      delay(100);
+      delay(5);
       if(zOffset <= Z_HOME_VALUE){
         zOffset = 0;
-        standUpSequence = false;
+        standUpSequence = 0;
+        sittingDown = 0;
       }
-      //hexaMoveAllLegsXYZ(0,0,0);
-      
-      writeAllLegs();
+      hexaMoveAllLegsXYZ(0,0, zOffset - Z_HOME_VALUE);
     }
-    else if(!tgl_sw){
+    /*
+    if(sitDownSequence){
+          Serial.println("sitDownSequence");
+          zOffset += 1;
+          Serial.println(zOffset);
+          delay(5);
+          if(zOffset >= -Z_HOME_VALUE){
+            zOffset = 0;
+            sitDownSequence = 0;
+            sittingDown = 1;
+          }
+          hexaMoveAllLegsXYZ(0,0, zOffset + Z_HOME_VALUE);
+        }
+    */
+    else if(tgl_sw){
       //Serial.println("Main loop");
 
       //Serial.println(js1_sw);
