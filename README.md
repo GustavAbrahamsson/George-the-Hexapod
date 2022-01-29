@@ -17,6 +17,6 @@ Future improvements:
 WIP:
 - Something to cover up all the electronics
 
- <img src="https://raw.githubusercontent.com/GustavAbrahamsson/HPR-1/main/Pictures/IMG_20210527_204659.jpg" width=80% height=80%>
- <img src="https://raw.githubusercontent.com/GustavAbrahamsson/HPR-1/main/Pictures/IMG_20210527_204721__01__01.jpg" width=80% height=80%>
- <img src="https://raw.githubusercontent.com/GustavAbrahamsson/HPR-1/main/Pictures/IMG_20210527_220852.jpg" width=80% height=80%>
+ <img src="https://raw.githubusercontent.com/GustavAbrahamsson/HPR-1/main/Pictures/IMG_20210527_204659.jpg">
+ <img src="https://raw.githubusercontent.com/GustavAbrahamsson/HPR-1/main/Pictures/IMG_20210527_204721__01__01.jpg">
+ <img src="https://raw.githubusercontent.com/GustavAbrahamsson/HPR-1/main/Pictures/IMG_20210527_220852.jpg">
