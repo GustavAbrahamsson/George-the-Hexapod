@@ -1,4 +1,4 @@
-# HPR-1 (George)
+# George the Hexapod
 
 A hexapod designed, built and programmed completely from scratch.
 
